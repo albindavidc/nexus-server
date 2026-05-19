@@ -1,5 +1,5 @@
 const User = require("../modules/auth/auth.model");
-const { verifyAccessToken } = require("../utils/jwt.util");
+const { verifyAccessToken } = require("../shared/utils/jwt.util");
 
 const protect = async (req, res, next) => {
   try {
@@ -36,4 +36,32 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+const authenticateSocket = async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+      return next(new Error("Unauthenicated"));
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await verifyAccessToken(token);
+    } catch (error) {
+      return next(new Error("Invalid Token"));
+    }
+
+    const user = await User.findById(decodedToken.userId);
+    if (!user) {
+      return next(new Error("User Not Found"));
+    }
+
+    socket.user = user;
+    socket.userId = user._id;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { protect, authenticateSocket };

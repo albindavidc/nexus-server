@@ -5,6 +5,7 @@ module.export = {
   CONVERSATION_TYPE: Object.freeze({
     USER: "user",
     GROUP: "group",
+    AI_COACH: "ai_coach",
   }),
   MESSAGE_TYPE: Object.freeze({
     TEXT: "text",

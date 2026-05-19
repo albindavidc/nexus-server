@@ -47,8 +47,16 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      default: "active",
-      enum: ["active", "inactive"],
+      default: USER_STATUS.OFFLINE,
+      enum: [USER_STATUS.ONLINE, USER_STATUS.OFFLINE],
+    },
+    socketIds: {
+      type: [String],
+      default: [],
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
     },
     refreshToken: {
       type: String,
