@@ -1,5 +1,18 @@
-const mongoose = require("mongoose");
-const { MESSAGE_TYPES } = require("../../../shared/constants");
+import mongoose, { Document } from "mongoose";
+import { MESSAGE_TYPE } from "../../shared/constants/index";
+
+export interface IMessage extends Document {
+  conversation: mongoose.Types.ObjectId;
+  type: string;
+  sender: mongoose.Types.ObjectId;
+  content: string;
+  mediaURL?: string;
+  replayTo?: mongoose.Types.ObjectId;
+  readBy: { user: mongoose.Types.ObjectId; readAt: Date }[];
+  deliveredTo: { user: mongoose.Types.ObjectId; deliveredAt: Date }[];
+  isDeleted: boolean;
+  deletedAt?: Date;
+}
 
 const messageSchema = new mongoose.Schema(
   {
@@ -11,8 +24,8 @@ const messageSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: Object.values(MESSAGE_TYPES),
-      default: MESSAGE_TYPES.TEXT,
+      enum: Object.values(MESSAGE_TYPE),
+      default: MESSAGE_TYPE.TEXT,
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
@@ -73,6 +86,6 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ conversation: 1, createdAt: -1 });
 
-const Message = mongoose.model("Message", messageSchema);
+const Message = mongoose.model<IMessage>("Message", messageSchema);
 
-module.exports = Message;
+export default Message;

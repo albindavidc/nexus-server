@@ -1,17 +1,31 @@
-const mongoose = require("mongoose");
-const { CONVERSATION_TYPES } = require("../../../shared/constants");
+import mongoose, { Document } from "mongoose";
+import { CONVERSATION_TYPE } from "../../shared/constants/index";
+
+export interface IConversation extends Document {
+  type: string;
+  name?: string;
+  avatar?: string;
+  participants: mongoose.Types.ObjectId[];
+  admin?: mongoose.Types.ObjectId;
+  lastMessage?: mongoose.Types.ObjectId;
+  pins: mongoose.Types.ObjectId[];
+  unreadCount: number;
+  isFavorite: boolean;
+  isDeleted: boolean;
+  deletedAt?: Date;
+}
 
 const conversationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: Object.values(CONVERSATION_TYPES),
+      enum: Object.values(CONVERSATION_TYPE),
       required: true,
     },
     name: {
       type: String,
       trim: true,
-      max: [250, "Conversation name cannot be longer than 250 characters"],
+      maxlength: [250, "Conversation name cannot be longer than 250 characters"],
     },
     avatar: {
       type: String,
@@ -60,6 +74,6 @@ const conversationSchema = new mongoose.Schema(
 
 conversationSchema.index({ participants: 1, deletedAt: 1 });
 
-const Conversation = mongoose.model("Conversation", conversationSchema);
+const Conversation = mongoose.model<IConversation>("Conversation", conversationSchema);
 
-module.exports = Conversation;
+export default Conversation;

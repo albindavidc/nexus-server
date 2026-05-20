@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -23,10 +23,22 @@
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
     "morgan": "^1.10.1",
+    "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.3",
+    "tsyringe": "^4.10.0",
     "winston": "^3.19.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.9.1",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }
