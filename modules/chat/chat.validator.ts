@@ -2,18 +2,11 @@ import { body, param, query, ValidationChain, validationResult } from "express-v
 import { Request, Response, NextFunction } from "express";
 import AppError from "../../shared/errors/AppError";
 
-/**
- * ChatValidator — Single Responsibility: validation rule chains for chat routes.
- * Open/Closed: new rules are added as new static getters without touching existing ones.
- */
 export class ChatValidator {
-  /**
-   * Centralised validation error handler, shared across all rule sets.
-   */
   static validate(req: Request, res: Response, next: NextFunction): void {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const messages = errors.array().map((e: any) => e.msg).join(". ");
+      const messages = errors.array().map((e) => e.msg).join(". ");
       return next(new AppError(messages, 422));
     }
     next();
@@ -94,7 +87,6 @@ export class ChatValidator {
   }
 }
 
-// Backwards-compatible named exports
 export const sendMessageValidator = ChatValidator.sendMessageRules;
 export const createGroupValidator = ChatValidator.createGroupRules;
 export const conversationIdValidator = ChatValidator.conversationIdRules;

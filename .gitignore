@@ -1,2 +1,11 @@
 .env
 node_modules
+
+# Generated output folders
+tmp/
+
+# Lint artifacts (generated in root by one-time commands)
+lint_output.txt
+eslint-report.json
+parsed.txt
+summary.json

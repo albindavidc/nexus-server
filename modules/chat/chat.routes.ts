@@ -1,4 +1,4 @@
-import express from "express";
+import express, { RequestHandler } from "express";
 import { container } from "tsyringe";
 import ChatController from "./chat.controller";
 import { ChatValidator } from "./chat.validator";
@@ -7,16 +7,12 @@ import { protect } from "../../middlewares/auth.middleware";
 const router = express.Router();
 const ctrl = container.resolve(ChatController);
 
-/**
- * Chat Routes — Single Responsibility: HTTP route mapping for the chat module.
- * Uses ChatValidator static getters for clean, self-documenting validation chains.
- */
 router.use(protect);
 
-router.get("/conversations", ctrl.getMyConversations);
-router.get("/conversations/:conversationId", ChatValidator.conversationIdRules, ctrl.getConversationById);
-router.post("/conversations/direct/:userId", ChatValidator.userIdRules, ctrl.startDirectConversation);
-router.post("/conversations/group", ChatValidator.createGroupRules, ctrl.createGroupConversation);
+router.get("/conversations", ctrl.getMyConversations as RequestHandler);
+router.get("/conversations/:conversationId", ChatValidator.conversationIdRules, ctrl.getConversationById as RequestHandler);
+router.post("/conversations/direct/:userId", ChatValidator.userIdRules, ctrl.startDirectConversation as RequestHandler);
+router.post("/conversations/group", ChatValidator.createGroupRules, ctrl.createGroupConversation as RequestHandler);
 
 router.get(
   "/conversations/:conversationId/messages",
@@ -24,7 +20,7 @@ router.get(
     ...ChatValidator.conversationIdRules.slice(0, -1),
     ...ChatValidator.paginationRules,
   ],
-  ctrl.getMessages
+  ctrl.getMessages as RequestHandler,
 );
 
 router.post(
@@ -33,15 +29,15 @@ router.post(
     ...ChatValidator.conversationIdRules.slice(0, -1),
     ...ChatValidator.sendMessageRules,
   ],
-  ctrl.sendMessage
+  ctrl.sendMessage as RequestHandler,
 );
 
 router.patch(
   "/conversations/:conversationId/read",
   ChatValidator.conversationIdRules,
-  ctrl.markConversationRead
+  ctrl.markConversationRead as RequestHandler,
 );
 
-router.delete("/messages/:messageId", ChatValidator.messageIdRules, ctrl.deleteMessage);
+router.delete("/messages/:messageId", ChatValidator.messageIdRules, ctrl.deleteMessage as RequestHandler);
 
 export default router;

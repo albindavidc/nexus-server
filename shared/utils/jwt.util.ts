@@ -3,10 +3,6 @@ import { Response } from "express";
 import { injectable } from "tsyringe";
 import { IJwtService } from "../interfaces/IJwtService";
 
-/**
- * JwtService — Single Responsibility: token generation, verification, and cookie management.
- * Implements IJwtService to satisfy Dependency Inversion Principle.
- */
 @injectable()
 export class JwtService implements IJwtService {
   private readonly accessSecret: string;
@@ -16,8 +12,8 @@ export class JwtService implements IJwtService {
 
   private readonly ACCESS_COOKIE_NAME = "access_token";
   private readonly REFRESH_COOKIE_NAME = "refresh_token";
-  private readonly ACCESS_MAX_AGE_MS = 20 * 60 * 1000;          // 20 minutes
-  private readonly REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  private readonly ACCESS_MAX_AGE_MS = 20 * 60 * 1000;
+  private readonly REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
   constructor() {
     this.accessSecret = process.env.JWT_ACCESS_TOKEN as string;
@@ -28,21 +24,21 @@ export class JwtService implements IJwtService {
 
   generateAccessToken(userId: string): string {
     return jwt.sign({ userId }, this.accessSecret, {
-      expiresIn: this.accessExpiresIn as any,
+      expiresIn: this.accessExpiresIn as jwt.SignOptions["expiresIn"],
     });
   }
 
   generateRefreshToken(userId: string): string {
     return jwt.sign({ userId }, this.refreshSecret, {
-      expiresIn: this.refreshExpiresIn as any,
+      expiresIn: this.refreshExpiresIn as jwt.SignOptions["expiresIn"],
     });
   }
 
-  async verifyAccessToken(token: string): Promise<any> {
+  async verifyAccessToken(token: string): Promise<jwt.JwtPayload | string> {
     return jwt.verify(token, this.accessSecret);
   }
 
-  async verifyRefreshToken(token: string): Promise<any> {
+  async verifyRefreshToken(token: string): Promise<jwt.JwtPayload | string> {
     return jwt.verify(token, this.refreshSecret);
   }
 

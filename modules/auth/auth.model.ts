@@ -14,7 +14,7 @@ export interface IUser extends Document {
   lastSeen: Date;
   refreshToken: string;
   comparePassword: (password: string) => Promise<boolean>;
-  toJson: () => any;
+  toJson: () => Record<string, unknown>;
 }
 
 const userSchema = new mongoose.Schema(
@@ -79,7 +79,7 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 userSchema.index({ username: 1 }, { unique: true });

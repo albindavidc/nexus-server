@@ -6,16 +6,11 @@ import { TOKENS } from "../../shared/di/tokens";
 import { CustomRequest } from "../../middlewares/auth.middleware";
 import { ResponseHelper } from "../../shared/utils/response";
 
-/**
- * AuthController — Single Responsibility: receives HTTP requests, delegates to AuthService, returns responses.
- * Depends on IAuthService abstraction (DIP) — not the concrete AuthService class.
- * Methods are arrow functions to safely preserve `this` context in Express route handlers.
- */
 @injectable()
 export default class AuthController {
   constructor(@inject(TOKENS.IAuthService) private authService: IAuthService) {}
 
-  register = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  register = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -32,7 +27,7 @@ export default class AuthController {
         password,
       });
 
-      if (!user) return; // response already sent inside service
+      if (!user) return;
 
       ResponseHelper.success(res, 201, "User registered successfully", { user });
     } catch (error) {
@@ -40,7 +35,7 @@ export default class AuthController {
     }
   };
 
-  login = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  login = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -50,7 +45,7 @@ export default class AuthController {
       const { email, password } = req.body;
       const user = await this.authService.login(res, { email, password });
 
-      if (!user) return; // response already sent inside service
+      if (!user) return;
 
       ResponseHelper.success(res, 200, "User logged in successfully", { user });
     } catch (error) {
@@ -58,11 +53,11 @@ export default class AuthController {
     }
   };
 
-  refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       const user = await this.authService.refreshToken(res, req);
 
-      if (!user) return; // response already sent inside service
+      if (!user) return;
 
       ResponseHelper.success(res, 200, "Token refreshed successfully", { user });
     } catch (error) {
@@ -70,7 +65,7 @@ export default class AuthController {
     }
   };
 
-  logout = async (req: CustomRequest, res: Response, next: NextFunction): Promise<any> => {
+  logout = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       await this.authService.logout(res, req.userId as string);
       ResponseHelper.success(res, 200, "User logged out successfully");
@@ -79,7 +74,7 @@ export default class AuthController {
     }
   };
 
-  getUser = async (req: CustomRequest, res: Response, next: NextFunction): Promise<any> => {
+  getUser = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       const user = await this.authService.getCurrentUser(req.userId as string);
 

@@ -1,10 +1,6 @@
 import mongoose from "mongoose";
 import logger from "../shared/utils/logger";
 
-/**
- * DatabaseConnection — Single Responsibility: manages the MongoDB connection lifecycle.
- * Using a class allows mocking in tests and clean separation from bootstrap logic.
- */
 export class DatabaseConnection {
   private readonly uri: string;
 

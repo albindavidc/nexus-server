@@ -1,32 +1,30 @@
 import { Request, Response, NextFunction } from "express";
 import { Socket } from "socket.io";
 import { injectable, inject } from "tsyringe";
-import User from "../modules/auth/auth.model";
+import User, { IUser } from "../modules/auth/auth.model";
+import jwt from "jsonwebtoken";
 import { IJwtService } from "../shared/interfaces/IJwtService";
 import { TOKENS } from "../shared/di/tokens";
 
 export interface CustomRequest extends Request {
-  user?: any;
+  user?: IUser;
   userId?: string;
+}
+
+export interface AuthenticatedRequest extends CustomRequest {
+  user: IUser;
 }
 
 export interface CustomSocket extends Socket {
-  user?: any;
+  user?: IUser;
   userId?: string;
 }
 
-/**
- * AuthMiddleware — Single Responsibility: verifies identity on HTTP routes and WebSockets.
- * Injects IJwtService (DIP) — depends on abstraction, not implementation.
- */
 @injectable()
 export class AuthMiddleware {
   constructor(@inject(TOKENS.IJwtService) private jwtService: IJwtService) {}
 
-  /**
-   * HTTP route guard. Validates the access_token cookie and attaches the user to the request.
-   */
-  protect = async (req: CustomRequest, res: Response, next: NextFunction): Promise<any> => {
+  protect = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
       const token = req.cookies?.access_token;
       if (!token) {
@@ -36,7 +34,7 @@ export class AuthMiddleware {
         });
       }
 
-      let decodedToken: any;
+      let decodedToken: jwt.JwtPayload | string;
       try {
         decodedToken = await this.jwtService.verifyAccessToken(token);
       } catch {
@@ -46,7 +44,8 @@ export class AuthMiddleware {
         });
       }
 
-      const user = await User.findById(decodedToken.userId);
+      const id = typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
+      const user = await User.findById(id);
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -62,24 +61,22 @@ export class AuthMiddleware {
     }
   };
 
-  /**
-   * Socket.IO authentication middleware.
-   */
-  authenticateSocket = async (socket: CustomSocket, next: (err?: any) => void): Promise<void> => {
+  authenticateSocket = async (socket: CustomSocket, next: (err?: Error | unknown) => void): Promise<void> => {
     try {
       const token = socket.handshake.auth?.token;
       if (!token) {
         return next(new Error("Unauthenticated"));
       }
 
-      let decodedToken: any;
+      let decodedToken: jwt.JwtPayload | string;
       try {
         decodedToken = await this.jwtService.verifyAccessToken(token);
       } catch {
         return next(new Error("Invalid Token"));
       }
 
-      const user = await User.findById(decodedToken.userId);
+      const id = typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
+      const user = await User.findById(id);
       if (!user) {
         return next(new Error("User Not Found"));
       }
@@ -93,8 +90,6 @@ export class AuthMiddleware {
   };
 }
 
-// Legacy functional exports — kept for backwards compatibility with existing route files
-// that haven't been migrated yet. Will be removed in a future cleanup.
 import { container } from "tsyringe";
 
 const _authMiddleware = () => container.resolve(AuthMiddleware);
@@ -102,5 +97,5 @@ const _authMiddleware = () => container.resolve(AuthMiddleware);
 export const protect = (req: CustomRequest, res: Response, next: NextFunction) =>
   _authMiddleware().protect(req, res, next);
 
-export const authenticateSocket = (socket: CustomSocket, next: (err?: any) => void) =>
+export const authenticateSocket = (socket: CustomSocket, next: (err?: Error | unknown) => void) =>
   _authMiddleware().authenticateSocket(socket, next);

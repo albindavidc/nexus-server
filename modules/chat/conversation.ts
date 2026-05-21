@@ -36,7 +36,6 @@ const conversationSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
     admin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -69,7 +68,7 @@ const conversationSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 conversationSchema.index({ participants: 1, deletedAt: 1 });

@@ -32,7 +32,6 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
     content: {
       type: String,
       required: true,
@@ -41,7 +40,6 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-
     replayTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
@@ -71,7 +69,6 @@ const messageSchema = new mongoose.Schema(
         },
       },
     ],
-
     isDeleted: {
       type: Boolean,
       default: false,
@@ -81,7 +78,7 @@ const messageSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 messageSchema.index({ conversation: 1, createdAt: -1 });

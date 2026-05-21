@@ -7,11 +7,6 @@ import { errorMiddleware } from "./middlewares/error.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import chatRoutes from "./modules/chat/chat.routes";
 
-/**
- * Application — Single Responsibility: configure and expose the Express application.
- * Does NOT start listening (that is the server's job — SRP).
- * Open/Closed: add new route groups or middleware without modifying existing configuration.
- */
 export class Application {
   private readonly app: ExpressApp;
 
@@ -22,7 +17,6 @@ export class Application {
     this.applyErrorHandling();
   }
 
-  /** Returns the configured Express instance. */
   getApp(): ExpressApp {
     return this.app;
   }

@@ -2,19 +2,16 @@ import { injectable, inject } from "tsyringe";
 import { Response, Request } from "express";
 import User from "./auth.model";
 import { IAuthService, RegisterUserDto, LoginDto } from "../../shared/interfaces/IAuthService";
+import { IUser } from "./auth.model";
+import jwt from "jsonwebtoken";
 import { IJwtService } from "../../shared/interfaces/IJwtService";
 import { TOKENS } from "../../shared/di/tokens";
 
-/**
- * AuthService — Single Responsibility: authentication business logic only.
- * Implements IAuthService (LSP-ready, DIP-compliant).
- * Depends on IJwtService abstraction — not the concrete JwtService class.
- */
 @injectable()
 export default class AuthService implements IAuthService {
   constructor(@inject(TOKENS.IJwtService) private jwtService: IJwtService) {}
 
-  async registerUser(res: Response, { firstName, lastName, username, email, password }: RegisterUserDto): Promise<any> {
+  async registerUser(res: Response, { firstName, lastName, username, email, password }: RegisterUserDto): Promise<IUser | Response> {
     const existingUser = await User.findOne({
       $or: [{ username }, { email }],
     });
@@ -40,7 +37,7 @@ export default class AuthService implements IAuthService {
     return user;
   }
 
-  async login(res: Response, { email, password }: LoginDto): Promise<any> {
+  async login(res: Response, { email, password }: LoginDto): Promise<IUser | Response> {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
@@ -69,7 +66,7 @@ export default class AuthService implements IAuthService {
     return user;
   }
 
-  async refreshToken(res: Response, req: Request): Promise<any> {
+  async refreshToken(res: Response, req: Request): Promise<IUser | Response> {
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
@@ -79,7 +76,7 @@ export default class AuthService implements IAuthService {
       });
     }
 
-    let decoded: any;
+    let decoded: jwt.JwtPayload | string;
     try {
       decoded = await this.jwtService.verifyRefreshToken(refreshToken);
     } catch {
@@ -89,7 +86,8 @@ export default class AuthService implements IAuthService {
       });
     }
 
-    const user = await User.findById(decoded.userId);
+    const userId = typeof decoded === "string" ? decoded : decoded.userId;
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -118,7 +116,7 @@ export default class AuthService implements IAuthService {
     return true;
   }
 
-  async getCurrentUser(userId: string): Promise<any> {
+  async getCurrentUser(userId: string): Promise<IUser | null> {
     return User.findById(userId);
   }
 }

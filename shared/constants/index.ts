@@ -6,6 +6,9 @@ export const CONVERSATION_TYPE = Object.freeze({
   GROUP: "group",
   AI_COACH: "ai_coach",
 });
+export type ConversationType =
+  (typeof CONVERSATION_TYPE)[keyof typeof CONVERSATION_TYPE];
+
 export const MESSAGE_TYPE = Object.freeze({
   TEXT: "text",
   IMAGE: "image",
@@ -13,10 +16,13 @@ export const MESSAGE_TYPE = Object.freeze({
   STICKER: "sticker",
   EMOJI: "emoji",
 });
+export type MessageType = (typeof MESSAGE_TYPE)[keyof typeof MESSAGE_TYPE];
+
 export const USER_STATUS = Object.freeze({
   ONLINE: "online",
   OFFLINE: "offline",
 });
+export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
 export const SOCKET_EVENTS = Object.freeze({
   CONNECT: "connect",
@@ -40,3 +46,5 @@ export const SOCKET_EVENTS = Object.freeze({
 
   SOCKET_ERROR: "socket_error",
 });
+
+export type SocketEvents = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];

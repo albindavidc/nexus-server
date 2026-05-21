@@ -1,13 +1,6 @@
 import { body, ValidationChain } from "express-validator";
 
-/**
- * AuthValidator — Single Responsibility: defines validation rule chains for auth routes.
- * Open/Closed: add new rule sets as static getters without modifying existing ones.
- */
 export class AuthValidator {
-  /**
-   * Rules for POST /auth/register
-   */
   static get registerRules(): ValidationChain[] {
     return [
       body("firstName").trim().notEmpty().withMessage("First name is required"),
@@ -38,9 +31,6 @@ export class AuthValidator {
     ];
   }
 
-  /**
-   * Rules for POST /auth/login
-   */
   static get loginRules(): ValidationChain[] {
     return [
       body("email").trim().notEmpty().withMessage("Email is required"),
@@ -49,6 +39,5 @@ export class AuthValidator {
   }
 }
 
-// Backwards-compatible named exports
 export const registerValidator = AuthValidator.registerRules;
 export const loginValidator = AuthValidator.loginRules;

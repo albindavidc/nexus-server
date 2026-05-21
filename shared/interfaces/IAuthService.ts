@@ -1,15 +1,12 @@
 import { Response, Request } from "express";
+import { IUser } from "../../modules/auth/auth.model";
 
-/**
- * Contract for authentication business logic.
- * Follows Interface Segregation Principle — auth operations only.
- */
 export interface IAuthService {
-  registerUser(res: Response, data: RegisterUserDto): Promise<any>;
-  login(res: Response, data: LoginDto): Promise<any>;
-  refreshToken(res: Response, req: Request): Promise<any>;
+  registerUser(res: Response, data: RegisterUserDto): Promise<IUser | Response>;
+  login(res: Response, data: LoginDto): Promise<IUser | Response>;
+  refreshToken(res: Response, req: Request): Promise<IUser | Response>;
   logout(res: Response, userId: string): Promise<boolean>;
-  getCurrentUser(userId: string): Promise<any>;
+  getCurrentUser(userId: string): Promise<IUser | null>;
 }
 
 export interface RegisterUserDto {

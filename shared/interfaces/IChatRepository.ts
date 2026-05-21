@@ -1,21 +1,20 @@
-/**
- * Contract for Chat data persistence operations.
- * Follows Interface Segregation Principle — data access only, no business logic.
- */
+import { IConversation } from "../../modules/chat/conversation";
+import { IMessage } from "../../modules/chat/message";
+
 export interface IChatRepository {
-  findDirectConversation(userAId: string, userBId: string): Promise<any>;
-  createConversation(data: any): Promise<any>;
-  findConversationById(conversationId: string, userId: string): Promise<any>;
-  findConversationsByUser(userId: string): Promise<any>;
-  updateLastMessage(conversationId: string, messageId: string): Promise<any>;
-  addParticipant(conversationId: string, userId: string): Promise<any>;
-  removeParticipant(conversationId: string, userId: string): Promise<any>;
-  createMessage(data: any): Promise<any>;
-  findMessages(conversationId: string, options?: FindMessagesOptions): Promise<any>;
-  findMessageById(messageId: string): Promise<any>;
-  markDelivered(messageId: string, userId: string): Promise<any>;
-  markConversationRead(conversationId: string, userId: string): Promise<any>;
-  countUnread(conversationId: string, userId: string): Promise<any>;
+  findDirectConversation(userAId: string, userBId: string): Promise<IConversation | null>;
+  createConversation(data: Record<string, unknown>): Promise<IConversation>;
+  findConversationById(conversationId: string, userId: string): Promise<IConversation | null>;
+  findConversationsByUser(userId: string): Promise<IConversation[]>;
+  updateLastMessage(conversationId: string, messageId: string): Promise<IConversation | null>;
+  addParticipant(conversationId: string, userId: string): Promise<IConversation | null>;
+  removeParticipant(conversationId: string, userId: string): Promise<IConversation | null>;
+  createMessage(data: Record<string, unknown>): Promise<IMessage>;
+  findMessages(conversationId: string, options?: FindMessagesOptions): Promise<IMessage[]>;
+  findMessageById(messageId: string): Promise<IMessage | null>;
+  markDelivered(messageId: string, userId: string): Promise<IMessage | null>;
+  markConversationRead(conversationId: string, userId: string): Promise<unknown>;
+  countUnread(conversationId: string, userId: string): Promise<number>;
 }
 
 export interface FindMessagesOptions {
