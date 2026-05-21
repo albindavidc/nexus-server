@@ -1,7 +1,7 @@
 import { injectable, inject } from "tsyringe";
 import User from "../auth/auth.model";
-import { IConversation } from "./conversation";
-import { IMessage } from "./message";
+import { IConversation } from "./conversation.model";
+import { IMessage } from "./message.model";
 import AppError from "../../shared/errors/AppError";
 import {
   IChatService,
@@ -18,7 +18,7 @@ import { CONVERSATION_TYPE, MESSAGE_TYPE } from "../../shared/constants/index";
 @injectable()
 export default class ChatService implements IChatService {
   constructor(
-    @inject(TOKENS.IChatRepository) private chatRepo: IChatRepository,
+    @inject(TOKENS.ChatRepository) private chatRepo: IChatRepository,
   ) {}
 
   async getOrCreateDirectConversation(

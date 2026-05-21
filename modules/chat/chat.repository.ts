@@ -1,58 +1,85 @@
 import { injectable } from "tsyringe";
-import Conversation, { IConversation } from "./conversation";
-import Message, { IMessage } from "./message";
+import Conversation, { IConversation } from "./conversation.model";
+import Message, { IMessage } from "./message.model";
 import { CONVERSATION_TYPE } from "../../shared/constants/index";
-import { IChatRepository, FindMessagesOptions } from "../../shared/interfaces/IChatRepository";
+import {
+  IChatRepository,
+  FindMessagesOptions,
+} from "../../shared/interfaces/IChatRepository";
 
 @injectable()
 export default class ChatRepository implements IChatRepository {
-  findDirectConversation(userAId: string, userBId: string): Promise<IConversation | null> {
+  findDirectConversation(
+    userAId: string,
+    userBId: string,
+  ): Promise<IConversation | null> {
     return Conversation.findOne({
       type: CONVERSATION_TYPE.USER,
       participants: { $all: [userAId, userBId], $size: 2 },
     })
       .populate("participants", "username avatar status lastSeen")
-      .populate({ path: "lastMessage", populate: { path: "sender", select: "username avatar" } });
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "username avatar" },
+      });
   }
 
   createConversation(data: Record<string, unknown>): Promise<IConversation> {
     return Conversation.create(data);
   }
 
-  findConversationById(conversationId: string, userId: string): Promise<IConversation | null> {
+  findConversationById(
+    conversationId: string,
+    userId: string,
+  ): Promise<IConversation | null> {
     return Conversation.findOne({ _id: conversationId, participants: userId })
       .populate("participants", "username avatar status lastSeen")
-      .populate({ path: "lastMessage", populate: { path: "sender", select: "username avatar" } });
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "username avatar" },
+      });
   }
 
   findConversationsByUser(userId: string): Promise<IConversation[]> {
     return Conversation.find({ participants: userId })
       .populate("participants", "username avatar status lastSeen")
-      .populate({ path: "lastMessage", populate: { path: "sender", select: "username avatar" } })
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "username avatar" },
+      })
       .sort({ updatedAt: -1 });
   }
 
-  updateLastMessage(conversationId: string, messageId: string): Promise<IConversation | null> {
+  updateLastMessage(
+    conversationId: string,
+    messageId: string,
+  ): Promise<IConversation | null> {
     return Conversation.findByIdAndUpdate(
       conversationId,
       { lastMessage: messageId, updatedAt: new Date() },
-      { new: true }
+      { new: true },
     );
   }
 
-  addParticipant(conversationId: string, userId: string): Promise<IConversation | null> {
+  addParticipant(
+    conversationId: string,
+    userId: string,
+  ): Promise<IConversation | null> {
     return Conversation.findByIdAndUpdate(
       conversationId,
       { $addToSet: { participants: userId } },
-      { new: true }
+      { new: true },
     );
   }
 
-  removeParticipant(conversationId: string, userId: string): Promise<IConversation | null> {
+  removeParticipant(
+    conversationId: string,
+    userId: string,
+  ): Promise<IConversation | null> {
     return Conversation.findByIdAndUpdate(
       conversationId,
       { $pull: { participants: userId } },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -64,13 +91,22 @@ export default class ChatRepository implements IChatRepository {
     ]);
   }
 
-  findMessages(conversationId: string, { before, limit = 20 }: FindMessagesOptions = {}): Promise<IMessage[]> {
-    const query: Record<string, unknown> = { conversation: conversationId, isDeleted: false };
+  findMessages(
+    conversationId: string,
+    { before, limit = 20 }: FindMessagesOptions = {},
+  ): Promise<IMessage[]> {
+    const query: Record<string, unknown> = {
+      conversation: conversationId,
+      isDeleted: false,
+    };
     if (before) query.createdAt = { $lt: new Date(before) };
 
     return Message.find(query)
       .populate("sender", "username avatar")
-      .populate({ path: "replyTo", populate: { path: "sender", select: "username" } })
+      .populate({
+        path: "replyTo",
+        populate: { path: "sender", select: "username" },
+      })
       .sort({ createdAt: -1 })
       .limit(Math.min(limit, 100));
   }
@@ -83,18 +119,21 @@ export default class ChatRepository implements IChatRepository {
     return Message.findByIdAndUpdate(
       messageId,
       { $addToSet: { deliveredTo: { user: userId } } },
-      { new: true }
+      { new: true },
     );
   }
 
-  markConversationRead(conversationId: string, userId: string): Promise<unknown> {
+  markConversationRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<unknown> {
     return Message.updateMany(
       {
         conversation: conversationId,
         "readBy.user": { $ne: userId },
         sender: { $ne: userId },
       },
-      { $addToSet: { readBy: { user: userId } } }
+      { $addToSet: { readBy: { user: userId } } },
     );
   }
 

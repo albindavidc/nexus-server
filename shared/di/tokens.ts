@@ -1,8 +1,12 @@
 export const TOKENS = {
-  IJwtService: "IJwtService",
-  IAuthService: "IAuthService",
-  IChatRepository: "IChatRepository",
-  IChatService: "IChatService",
-} as const;
+  JwtService: Symbol.for("JwtService"),
 
-export type TokenKeys = keyof typeof TOKENS;
+  AuthService: Symbol.for("AuthService"),
+  AuthRepository: Symbol.for("AuthRepository"),
+
+  ChatRepository: Symbol.for("ChatRepository"),
+  ChatService: Symbol.for("ChatService"),
+
+  GroupRepository: Symbol.for("GroupRepository"),
+  GroupService: Symbol.for("GroupService"),
+} as const;

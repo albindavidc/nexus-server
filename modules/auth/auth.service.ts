@@ -1,20 +1,21 @@
 import { injectable, inject } from "tsyringe";
 import { Response, Request } from "express";
-import User from "./auth.model";
 import { IAuthService, RegisterUserDto, LoginDto } from "../../shared/interfaces/IAuthService";
+import { IAuthRepository } from "../../shared/interfaces/IAuthRepository";
 import { IUser } from "./auth.model";
 import jwt from "jsonwebtoken";
-import { IJwtService } from "../../shared/interfaces/IJwtService";
+import { JwtService } from "../../shared/utils/jwt.util";
 import { TOKENS } from "../../shared/di/tokens";
 
 @injectable()
 export default class AuthService implements IAuthService {
-  constructor(@inject(TOKENS.IJwtService) private jwtService: IJwtService) {}
+  constructor(
+    @inject(TOKENS.JwtService) private jwtService: JwtService,
+    @inject(TOKENS.AuthRepository) private authRepo: IAuthRepository
+  ) {}
 
   async registerUser(res: Response, { firstName, lastName, username, email, password }: RegisterUserDto): Promise<IUser | Response> {
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email }],
-    });
+    const existingUser = await this.authRepo.findByUsernameOrEmail(username, email);
 
     if (existingUser) {
       const field = existingUser.email === email ? "email" : "username";
@@ -24,13 +25,13 @@ export default class AuthService implements IAuthService {
       });
     }
 
-    const user = await User.create({ firstName, lastName, username, email, password });
+    const user = await this.authRepo.createUser({ firstName, lastName, username, email, password });
 
     const accessToken = this.jwtService.generateAccessToken(String(user._id));
     const refreshToken = this.jwtService.generateRefreshToken(String(user._id));
 
     user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    await this.authRepo.saveUser(user);
 
     this.jwtService.setCookies(res, accessToken, refreshToken);
 
@@ -38,7 +39,7 @@ export default class AuthService implements IAuthService {
   }
 
   async login(res: Response, { email, password }: LoginDto): Promise<IUser | Response> {
-    const user = await User.findOne({ email }).select("+password");
+    const user = await this.authRepo.findByEmailWithPassword(email);
 
     if (!user) {
       return res.status(404).json({
@@ -59,7 +60,7 @@ export default class AuthService implements IAuthService {
     const refreshToken = this.jwtService.generateRefreshToken(String(user._id));
 
     user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    await this.authRepo.saveUser(user);
 
     this.jwtService.setCookies(res, accessToken, refreshToken);
 
@@ -87,7 +88,7 @@ export default class AuthService implements IAuthService {
     }
 
     const userId = typeof decoded === "string" ? decoded : decoded.userId;
-    const user = await User.findById(userId);
+    const user = await this.authRepo.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -99,7 +100,7 @@ export default class AuthService implements IAuthService {
     const newRefreshToken = this.jwtService.generateRefreshToken(String(user._id));
 
     user.refreshToken = newRefreshToken;
-    await user.save({ validateBeforeSave: false });
+    await this.authRepo.saveUser(user);
 
     this.jwtService.setCookies(res, newAccessToken, newRefreshToken);
 
@@ -107,8 +108,9 @@ export default class AuthService implements IAuthService {
   }
 
   async logout(res: Response, userId: string): Promise<boolean> {
-    await User.findByIdAndUpdate(userId, {
-      refreshToken: null,
+    await this.authRepo.updateUser(userId, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      refreshToken: null as any,
       status: "inactive",
     });
 
@@ -117,6 +119,6 @@ export default class AuthService implements IAuthService {
   }
 
   async getCurrentUser(userId: string): Promise<IUser | null> {
-    return User.findById(userId);
+    return this.authRepo.findById(userId);
   }
 }

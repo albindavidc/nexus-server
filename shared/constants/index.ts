@@ -24,6 +24,13 @@ export const USER_STATUS = Object.freeze({
 });
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
+export const GROUP_ROLES = Object.freeze({
+  ADMIN: "admin",
+  OWNER: "owner",
+  MEMBER: "member",
+});
+export type GroupRole = (typeof GROUP_ROLES)[keyof typeof GROUP_ROLES];
+
 export const SOCKET_EVENTS = Object.freeze({
   CONNECT: "connect",
   DISCONNECT: "disconnect",
@@ -43,6 +50,15 @@ export const SOCKET_EVENTS = Object.freeze({
 
   USER_ONLINE: "user_online",
   USER_OFFLINE: "user_offline",
+
+  GROUP_CREATED: "group_created",
+  GROUP_UPDATED: "group_updated",
+  GROUP_DELETED: "group_deleted",
+  MEMBER_ADDED: "member_added",
+  MEMBER_REMOVED: "member_removed",
+  MEMBER_LEFT: "member_left",
+  MEMBER_PROMOTED: "member_promoted",
+  MEMBER_DEMOTED: "member_demoted",
 
   SOCKET_ERROR: "socket_error",
 });

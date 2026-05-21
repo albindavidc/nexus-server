@@ -8,7 +8,7 @@ import { ResponseHelper } from "../../shared/utils/response";
 
 @injectable()
 export default class AuthController {
-  constructor(@inject(TOKENS.IAuthService) private authService: IAuthService) {}
+  constructor(@inject(TOKENS.AuthService) private authService: IAuthService) {}
 
   register = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
     try {
