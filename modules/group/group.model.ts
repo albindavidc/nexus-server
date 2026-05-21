@@ -91,7 +91,9 @@ conversationSchema.virtual("membersCount").get(function (
   return this.members?.length ?? 0;
 });
 
-export const Conversation = model<IConversationDocument>(
+const GroupConversation = model<IConversation>(
   "Conversation",
   conversationSchema,
 );
+
+export default GroupConversation;

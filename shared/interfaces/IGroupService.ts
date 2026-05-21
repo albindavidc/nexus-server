@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { IConversationDocument } from "../types/group.types";
 
 export interface ICreateGroupDto {
@@ -15,41 +16,44 @@ export interface IUpdateGroupDto {
 
 export interface IGroupService {
   createGroup(
-    creatorId: string,
+    creatorId: Types.ObjectId,
     data: ICreateGroupDto,
   ): Promise<IConversationDocument>;
-  getGroupById(groupId: string, userId: string): Promise<IConversationDocument>;
-  getMyGroups(userId: string): Promise<IConversationDocument[]>;
+  getGroup(
+    groupId: string,
+    userId: Types.ObjectId,
+  ): Promise<IConversationDocument>;
+  getMyGroups(userId: Types.ObjectId): Promise<IConversationDocument[]>;
   updateGroup(
     groupId: string,
-    userId: string,
+    userId: Types.ObjectId,
     data: IUpdateGroupDto,
   ): Promise<IConversationDocument>;
-  deleteGroup(groupId: string, userId: string): Promise<void>;
+  deleteGroup(groupId: string, userId: Types.ObjectId): Promise<void>;
 
   addMembers(
     groupId: string,
-    requesterId: string,
-    userIds: string[],
+    requesterId: Types.ObjectId,
+    userIds: Types.ObjectId[],
   ): Promise<IConversationDocument>;
   removeMembers(
     groupId: string,
-    requesterId: string,
-    userIds: string[],
+    requesterId: Types.ObjectId,
+    userId: Types.ObjectId,
   ): Promise<IConversationDocument>;
-  leaveGroup(groupId: string, userId: string): Promise<void>;
+  leaveGroup(groupId: string, userId: Types.ObjectId): Promise<void>;
 
   promoteMember(
     groupId: string,
-    requesterId: string,
-    userId: string,
+    requesterId: Types.ObjectId,
+    userId: Types.ObjectId,
   ): Promise<IConversationDocument>;
   demoteMember(
     groupId: string,
-    requesterId: string,
-    userId: string,
+    requesterId: Types.ObjectId,
+    userId: Types.ObjectId,
   ): Promise<IConversationDocument>;
-  transferOwner(
+  transferOwnership(
     groupId: string,
     currentOwnerId: string,
     newOwnerId: string,
