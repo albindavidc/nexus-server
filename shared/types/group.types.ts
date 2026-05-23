@@ -75,7 +75,7 @@ export interface IUpdateGroupBody {
 }
 
 export interface IAddMemberBody {
-  userId: string;
+  userIds: string[];
 }
 
 export interface ITransferMembershipBody {
