@@ -98,18 +98,3 @@ export class AuthMiddleware {
     }
   };
 }
-
-import { container } from "tsyringe";
-
-const _authMiddleware = () => container.resolve(AuthMiddleware);
-
-export const protect = (
-  req: CustomRequest,
-  res: Response,
-  next: NextFunction,
-) => _authMiddleware().protect(req, res, next);
-
-export const authenticateSocket = (
-  socket: CustomSocket,
-  next: (err?: Error | unknown) => void,
-) => _authMiddleware().authenticateSocket(socket, next);

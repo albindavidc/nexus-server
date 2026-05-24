@@ -3,7 +3,7 @@ import { Server, Socket as IOSocket } from "socket.io";
 import * as http from "http";
 import {
   CustomSocket,
-  authenticateSocket,
+  AuthMiddleware,
 } from "../../middlewares/auth.middleware";
 import { IChatRepository } from "../../shared/interfaces/repository/chat-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
@@ -30,7 +30,8 @@ export class ChatGateway {
       pingTimeout: 15_000,
     });
 
-    this.io.use(authenticateSocket as Parameters<Server["use"]>[0]);
+    const authMiddleware = container.resolve(AuthMiddleware);
+    this.io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
 
     this.io.on(SOCKET_EVENTS.CONNECT, (socket: IOSocket) => {
       this.handleConnection(socket as CustomSocket);
@@ -42,7 +43,7 @@ export class ChatGateway {
     logger.debug(`User ${userId} connected`);
 
     this.onUserConnect(socket, userId);
-    socket.join(userId);
+    socket.join(userId); 
 
     socket.on(
       SOCKET_EVENTS.JOIN_CONVERSATION,

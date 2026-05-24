@@ -2,12 +2,13 @@ import express, { RequestHandler } from "express";
 import { container } from "tsyringe";
 import ChatController from "./chat.controller";
 import { ChatValidator } from "./chat.validator";
-import { protect } from "../../middlewares/auth.middleware";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
 
 const router = express.Router();
 const ctrl = container.resolve(ChatController);
+const authMiddleware = container.resolve(AuthMiddleware);
 
-router.use(protect);
+router.use(authMiddleware.protect);
 
 router.get("/conversations", ctrl.getMyConversations as RequestHandler);
 router.get("/conversations/:conversationId", ChatValidator.conversationIdRules, ctrl.getConversationById as RequestHandler);
