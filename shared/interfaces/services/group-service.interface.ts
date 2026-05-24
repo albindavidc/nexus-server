@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { IConversationDocument } from "../types/group.types";
+import { IConversationDocument } from "../../types/group.types";
 
 export interface CreateGroupDto {
   name: string;

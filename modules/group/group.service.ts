@@ -3,8 +3,8 @@ import {
   IGroupService,
   CreateGroupDto,
   UpdateGroupDto,
-} from "../../shared/interfaces/IGroupService";
-import { IGroupRepository } from "../../shared/interfaces/IGroupRepository";
+} from "../../shared/interfaces/services/group-service.interface";
+import { IGroupRepository } from "../../shared/interfaces/repository/group-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
 import {
   IConversationDocument,

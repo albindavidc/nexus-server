@@ -7,11 +7,11 @@ import {
   IChatService,
   CreateGroupDto,
   SendMessageDto,
-} from "../../shared/interfaces/IChatService";
+} from "../../shared/interfaces/services/chat-service.interface";
 import {
   IChatRepository,
   FindMessagesOptions,
-} from "../../shared/interfaces/IChatRepository";
+} from "../../shared/interfaces/repository/chat-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
 import { CONVERSATION_TYPE, MESSAGE_TYPE } from "../../shared/constants/index";
 

@@ -1,5 +1,5 @@
-import { IUser } from "../../modules/auth/auth.model";
-import { RegisterUserDto } from "./IAuthService";
+import { IUser } from "../../../modules/auth/auth.model";
+import { RegisterUserDto } from "../services/auth-service.interface";
 
 export interface IAuthRepository {
   findByUsernameOrEmail(username: string, email: string): Promise<IUser | null>;

@@ -5,7 +5,7 @@ import {
   CustomSocket,
   authenticateSocket,
 } from "../../middlewares/auth.middleware";
-import { IChatRepository } from "../../shared/interfaces/IChatRepository";
+import { IChatRepository } from "../../shared/interfaces/repository/chat-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
 import { SOCKET_EVENTS, USER_STATUS } from "../../shared/constants/index";
 import logger from "../../shared/utils/logger";
@@ -16,7 +16,7 @@ export class ChatGateway {
   private io!: Server;
 
   constructor(
-    @inject(TOKENS.IChatRepository) private chatRepo: IChatRepository,
+    @inject(TOKENS.ChatRepository) private chatRepo: IChatRepository,
   ) {}
 
   initialize(httpServer: http.Server, clientUrl: string): void {
@@ -54,8 +54,15 @@ export class ChatGateway {
       (data: { conversationId: string }) =>
         this.handleLeaveConversation(socket, data),
     );
-    socket.on(SOCKET_EVENTS.SEND_MESSAGE, (data: { conversationId: string; content: string; type?: string; mediaURL?: string; replyTo?: string }) =>
-      this.handleSendMessage(socket, data),
+    socket.on(
+      SOCKET_EVENTS.SEND_MESSAGE,
+      (data: {
+        conversationId: string;
+        content: string;
+        type?: string;
+        mediaURL?: string;
+        replyTo?: string;
+      }) => this.handleSendMessage(socket, data),
     );
     socket.on(SOCKET_EVENTS.MESSAGE_READ, (data: { conversationId: string }) =>
       this.handleReadMessage(socket, data),
@@ -120,23 +127,22 @@ export class ChatGateway {
     try {
       const conversations = await this.chatRepo.findConversationsByUser(userId);
       conversations.forEach((conversation) => {
-          const otherParticipant = conversation.participants.find(
-            (p) => p.toString() !== userId,
+        const otherParticipant = conversation.participants.find(
+          (p) => p.toString() !== userId,
+        );
+        const targetId = otherParticipant?.toString() ?? "";
+
+        if (!targetId) return;
+
+        this.io
+          .to(targetId)
+          .emit(
+            status === USER_STATUS.ONLINE
+              ? SOCKET_EVENTS.USER_ONLINE
+              : SOCKET_EVENTS.USER_OFFLINE,
+            { userId },
           );
-          const targetId = otherParticipant?.toString() ?? "";
-
-          if (!targetId) return;
-
-          this.io
-            .to(targetId)
-            .emit(
-              status === USER_STATUS.ONLINE
-                ? SOCKET_EVENTS.USER_ONLINE
-                : SOCKET_EVENTS.USER_OFFLINE,
-              { userId },
-            );
-        },
-      );
+      });
 
       logger.debug(`Broadcasted ${status} presence for user ${userId}`);
     } catch (error) {
@@ -204,7 +210,13 @@ export class ChatGateway {
       type,
       mediaURL,
       replyTo,
-    }: { conversationId: string; content: string; type?: string; mediaURL?: string; replyTo?: string },
+    }: {
+      conversationId: string;
+      content: string;
+      type?: string;
+      mediaURL?: string;
+      replyTo?: string;
+    },
   ): Promise<void> {
     try {
       if (!conversationId)

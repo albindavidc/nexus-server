@@ -1,7 +1,7 @@
-import { FindMessagesOptions } from "./IChatRepository";
+import { FindMessagesOptions } from "../repository/chat-repository.interface";
 
-import { IConversation } from "../../modules/chat/conversation.model";
-import { IMessage } from "../../modules/chat/message.model";
+import { IConversation } from "../../../modules/chat/conversation.model";
+import { IMessage } from "../../../modules/chat/message.model";
 
 export interface IChatService {
   getOrCreateDirectConversation(

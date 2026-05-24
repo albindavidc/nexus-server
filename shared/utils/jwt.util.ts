@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Response } from "express";
 import { injectable } from "tsyringe";
-import { IJwtService } from "../interfaces/IJwtService";
+import { IJwtService } from "../interfaces/services/jwt-service.interface";
 
 @injectable()
 export class JwtService implements IJwtService {
@@ -18,8 +18,10 @@ export class JwtService implements IJwtService {
   constructor() {
     this.accessSecret = process.env.JWT_ACCESS_TOKEN as string;
     this.refreshSecret = process.env.JWT_REFRESH_TOKEN as string;
-    this.accessExpiresIn = (process.env.JWT_ACCESS_TOKEN_EXPIRES_IN as string) || "15m";
-    this.refreshExpiresIn = (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN as string) || "7d";
+    this.accessExpiresIn =
+      (process.env.JWT_ACCESS_TOKEN_EXPIRES_IN as string) || "15m";
+    this.refreshExpiresIn =
+      (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN as string) || "7d";
   }
 
   generateAccessToken(userId: string): string {

@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { container } from "tsyringe";
 import { TOKENS } from "../../shared/di/tokens";
-import { IGroupService } from "../../shared/interfaces/IGroupService";
+import { IGroupService } from "../../shared/interfaces/services/group-service.interface";
 import { SOCKET_EVENTS, GROUP_ROLES } from "../../shared/constants";
 import logger from "../../shared/utils/logger";
 import { Types } from "mongoose";
@@ -52,10 +52,7 @@ const emitError = (socket: AuthSocket, message: string): void => {
   socket.emit(SOCKET_EVENTS.SOCKET_ERROR, { message });
 };
 
-export const registerGroupHandlers = (
-  socket: AuthSocket,
-  io: Server,
-): void => {
+export const registerGroupHandlers = (socket: AuthSocket, io: Server): void => {
   const groupService = container.resolve<IGroupService>(
     TOKENS.GroupService as unknown as new () => IGroupService,
   );
@@ -86,7 +83,8 @@ export const registerGroupHandlers = (
 
       logger.debug(`Group created: "${name}" by ${socket.user.userName}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to create group.";
+      const message =
+        err instanceof Error ? err.message : "Failed to create group.";
       logger.error(`group:create error: ${message}`);
       emitError(socket, message);
     }
@@ -111,39 +109,38 @@ export const registerGroupHandlers = (
 
       logger.debug(`Group updated: ${groupId} by ${socket.user.userName}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update group.";
+      const message =
+        err instanceof Error ? err.message : "Failed to update group.";
       logger.error(`group:update error: ${message}`);
       emitError(socket, message);
     }
   });
 
-  socket.on(
-    "group:delete",
-    async ({ groupId }: { groupId: string }) => {
-      try {
-        if (!groupId) return emitError(socket, "groupId is required.");
+  socket.on("group:delete", async ({ groupId }: { groupId: string }) => {
+    try {
+      if (!groupId) return emitError(socket, "groupId is required.");
 
-        const group = await groupService.getGroup(groupId, socket.user._id);
-        await groupService.deleteGroup(groupId, socket.user._id);
+      const group = await groupService.getGroup(groupId, socket.user._id);
+      await groupService.deleteGroup(groupId, socket.user._id);
 
-        group.members.forEach((m) => {
-          io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_DELETED, {
-            groupId,
-            actorId: socket.user._id,
-            actorUserName: socket.user.userName,
-          });
+      group.members.forEach((m) => {
+        io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_DELETED, {
+          groupId,
+          actorId: socket.user._id,
+          actorUserName: socket.user.userName,
         });
+      });
 
-        io.in(groupId).socketsLeave(groupId);
+      io.in(groupId).socketsLeave(groupId);
 
-        logger.debug(`Group deleted: ${groupId} by ${socket.user.userName}`);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to delete group.";
-        logger.error(`group:delete error: ${message}`);
-        emitError(socket, message);
-      }
-    },
-  );
+      logger.debug(`Group deleted: ${groupId} by ${socket.user.userName}`);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete group.";
+      logger.error(`group:delete error: ${message}`);
+      emitError(socket, message);
+    }
+  });
 
   socket.on("group:add_members", async (payload: AddMembersPayload) => {
     try {
@@ -171,7 +168,8 @@ export const registerGroupHandlers = (
 
       logger.debug(`Members added to ${groupId}: ${userIds.join(", ")}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to add members.";
+      const message =
+        err instanceof Error ? err.message : "Failed to add members.";
       logger.error(`group:add_members error: ${message}`);
       emitError(socket, message);
     }
@@ -183,11 +181,7 @@ export const registerGroupHandlers = (
       if (!groupId || !targetUserId)
         return emitError(socket, "groupId and targetUserId are required.");
 
-      await groupService.removeMember(
-        groupId,
-        socket.user._id,
-        targetUserId,
-      );
+      await groupService.removeMember(groupId, socket.user._id, targetUserId);
 
       io.to(groupId).emit(SOCKET_EVENTS.MEMBER_REMOVED, {
         groupId,
@@ -202,7 +196,8 @@ export const registerGroupHandlers = (
         `Member ${targetUserId} removed from ${groupId} by ${socket.user.userName}`,
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to remove member.";
+      const message =
+        err instanceof Error ? err.message : "Failed to remove member.";
       logger.error(`group:remove_member error: ${message}`);
       emitError(socket, message);
     }
@@ -225,7 +220,8 @@ export const registerGroupHandlers = (
 
       logger.debug(`${socket.user.userName} left group ${groupId}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to leave group.";
+      const message =
+        err instanceof Error ? err.message : "Failed to leave group.";
       logger.error(`group:leave error: ${message}`);
       emitError(socket, message);
     }
@@ -237,11 +233,7 @@ export const registerGroupHandlers = (
       if (!groupId || !targetUserId)
         return emitError(socket, "groupId and targetUserId are required.");
 
-      await groupService.promoteMember(
-        groupId,
-        socket.user._id,
-        targetUserId,
-      );
+      await groupService.promoteMember(groupId, socket.user._id, targetUserId);
 
       io.to(groupId).emit(SOCKET_EVENTS.MEMBER_PROMOTED, {
         groupId,
@@ -253,7 +245,8 @@ export const registerGroupHandlers = (
 
       logger.debug(`Member ${targetUserId} promoted in ${groupId}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to promote member.";
+      const message =
+        err instanceof Error ? err.message : "Failed to promote member.";
       logger.error(`group:promote error: ${message}`);
       emitError(socket, message);
     }
@@ -265,11 +258,7 @@ export const registerGroupHandlers = (
       if (!groupId || !targetUserId)
         return emitError(socket, "groupId and targetUserId are required.");
 
-      await groupService.demoteMember(
-        groupId,
-        socket.user._id,
-        targetUserId,
-      );
+      await groupService.demoteMember(groupId, socket.user._id, targetUserId);
 
       io.to(groupId).emit(SOCKET_EVENTS.MEMBER_DEMOTED, {
         groupId,
@@ -281,7 +270,8 @@ export const registerGroupHandlers = (
 
       logger.debug(`Member ${targetUserId} demoted in ${groupId}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to demote member.";
+      const message =
+        err instanceof Error ? err.message : "Failed to demote member.";
       logger.error(`group:demote error: ${message}`);
       emitError(socket, message);
     }
@@ -311,9 +301,7 @@ export const registerGroupHandlers = (
           isOwnerTransfer: true,
         });
 
-        logger.debug(
-          `Ownership of ${groupId} transferred to ${newOwnerId}`,
-        );
+        logger.debug(`Ownership of ${groupId} transferred to ${newOwnerId}`);
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Failed to transfer ownership.";

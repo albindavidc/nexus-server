@@ -9,4 +9,7 @@ export const TOKENS = {
 
   GroupRepository: Symbol.for("GroupRepository"),
   GroupService: Symbol.for("GroupService"),
+
+  ChatBotRepository: Symbol.for("ChatBotRepository"),
+  ChatBotService: Symbol.for("ChatBotService"),
 } as const;

@@ -2,7 +2,7 @@ export const DEFAULT_PAGE_SIZE = 30;
 export const MAX_PAGE_SIZE = 100;
 
 export const CONVERSATION_TYPE = Object.freeze({
-  USER: "user",
+  DIRECT: "direct",
   GROUP: "group",
   AI_COACH: "ai_coach",
 });
@@ -60,7 +60,17 @@ export const SOCKET_EVENTS = Object.freeze({
   MEMBER_PROMOTED: "member_promoted",
   MEMBER_DEMOTED: "member_demoted",
 
+  BOT_MESSAGE: "bot_message",
+  BOT_TYPING: "bot_typing",
+  BOT_CHUNK: "bot_chunk",
+  BOT_DONE: "bot_done",
+  BOT_ERROR: "bot_error",
+
   SOCKET_ERROR: "socket_error",
 });
+
+export const BOT_USER_ID = "nexus-coach-bot";
+export const BOT_USER_NAME = "Nexus Coach";
+export const BOT_AVATAR = "/assets/images/bot.svg";
 
 export type SocketEvents = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];

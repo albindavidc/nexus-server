@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { GroupRole } from "../constants";
-import { IConversationDocument, IGroupMember } from "../types/group.types";
+import { GroupRole } from "../../constants";
+import { IConversationDocument, IGroupMember } from "../../types/group.types";
 
 export interface IGroupRepository {
   create(data: Partial<IConversationDocument>): Promise<IConversationDocument>;

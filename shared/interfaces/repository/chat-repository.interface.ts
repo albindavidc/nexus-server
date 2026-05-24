@@ -1,5 +1,5 @@
-import { IConversation } from "../../modules/chat/conversation.model";
-import { IMessage } from "../../modules/chat/message.model";
+import { IConversation } from "../../../modules/chat/conversation.model";
+import { IMessage } from "../../../modules/chat/message.model";
 
 export interface IChatRepository {
   findDirectConversation(

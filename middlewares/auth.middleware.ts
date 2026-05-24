@@ -3,7 +3,7 @@ import { Socket } from "socket.io";
 import { injectable, inject } from "tsyringe";
 import User, { IUser } from "../modules/auth/auth.model";
 import jwt from "jsonwebtoken";
-import { IJwtService } from "../shared/interfaces/IJwtService";
+import { IJwtService } from "../shared/interfaces/services/jwt-service.interface";
 import { TOKENS } from "../shared/di/tokens";
 
 export interface CustomRequest extends Request {
@@ -22,9 +22,13 @@ export interface CustomSocket extends Socket {
 
 @injectable()
 export class AuthMiddleware {
-  constructor(@inject(TOKENS.IJwtService) private jwtService: IJwtService) {}
+  constructor(@inject(TOKENS.JwtService) private jwtService: IJwtService) {}
 
-  protect = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
+  protect = async (
+    req: CustomRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       const token = req.cookies?.access_token;
       if (!token) {
@@ -44,7 +48,8 @@ export class AuthMiddleware {
         });
       }
 
-      const id = typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
+      const id =
+        typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
       const user = await User.findById(id);
       if (!user) {
         return res.status(401).json({
@@ -61,7 +66,10 @@ export class AuthMiddleware {
     }
   };
 
-  authenticateSocket = async (socket: CustomSocket, next: (err?: Error | unknown) => void): Promise<void> => {
+  authenticateSocket = async (
+    socket: CustomSocket,
+    next: (err?: Error | unknown) => void,
+  ): Promise<void> => {
     try {
       const token = socket.handshake.auth?.token;
       if (!token) {
@@ -75,7 +83,8 @@ export class AuthMiddleware {
         return next(new Error("Invalid Token"));
       }
 
-      const id = typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
+      const id =
+        typeof decodedToken === "string" ? decodedToken : decodedToken.userId;
       const user = await User.findById(id);
       if (!user) {
         return next(new Error("User Not Found"));
@@ -94,8 +103,13 @@ import { container } from "tsyringe";
 
 const _authMiddleware = () => container.resolve(AuthMiddleware);
 
-export const protect = (req: CustomRequest, res: Response, next: NextFunction) =>
-  _authMiddleware().protect(req, res, next);
+export const protect = (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction,
+) => _authMiddleware().protect(req, res, next);
 
-export const authenticateSocket = (socket: CustomSocket, next: (err?: Error | unknown) => void) =>
-  _authMiddleware().authenticateSocket(socket, next);
+export const authenticateSocket = (
+  socket: CustomSocket,
+  next: (err?: Error | unknown) => void,
+) => _authMiddleware().authenticateSocket(socket, next);

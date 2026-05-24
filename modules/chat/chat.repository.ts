@@ -5,7 +5,7 @@ import { CONVERSATION_TYPE } from "../../shared/constants/index";
 import {
   IChatRepository,
   FindMessagesOptions,
-} from "../../shared/interfaces/IChatRepository";
+} from "../../shared/interfaces/repository/chat-repository.interface";
 
 @injectable()
 export default class ChatRepository implements IChatRepository {
@@ -14,7 +14,7 @@ export default class ChatRepository implements IChatRepository {
     userBId: string,
   ): Promise<IConversation | null> {
     return Conversation.findOne({
-      type: CONVERSATION_TYPE.USER,
+      type: CONVERSATION_TYPE.DIRECT,
       participants: { $all: [userAId, userBId], $size: 2 },
     })
       .populate("participants", "username avatar status lastSeen")

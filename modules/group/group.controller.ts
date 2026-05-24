@@ -3,7 +3,7 @@ import { Server } from "socket.io";
 import { Types } from "mongoose";
 import { inject, injectable } from "tsyringe";
 import { TOKENS } from "../../shared/di/tokens";
-import { IGroupService } from "../../shared/interfaces/IGroupService";
+import { IGroupService } from "../../shared/interfaces/services/group-service.interface";
 import { sendSuccess } from "../../shared/utils/response";
 import { IGroupMember } from "../../shared/types/group.types";
 import { SOCKET_EVENTS } from "../../shared/constants";

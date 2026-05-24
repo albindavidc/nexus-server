@@ -1,14 +1,14 @@
 import { injectable, inject } from "tsyringe";
 import { Response, NextFunction } from "express";
-import { IChatService } from "../../shared/interfaces/IChatService";
+import { IChatService } from "../../shared/interfaces/services/chat-service.interface";
 import { TOKENS } from "../../shared/di/tokens";
 import { AuthenticatedRequest } from "../../middlewares/auth.middleware";
 import { ResponseHelper } from "../../shared/utils/response";
-import { FindMessagesOptions } from "../../shared/interfaces/IChatRepository";
+import { FindMessagesOptions } from "../../shared/interfaces/repository/chat-repository.interface";
 
 @injectable()
 export default class ChatController {
-  constructor(@inject(TOKENS.IChatService) private chatService: IChatService) {}
+  constructor(@inject(TOKENS.ChatService) private chatService: IChatService) {}
 
   getMyConversations = async (
     req: AuthenticatedRequest,

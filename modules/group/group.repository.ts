@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { GroupRole } from "../../shared/constants";
-import { IGroupRepository } from "../../shared/interfaces/IGroupRepository";
+import { IGroupRepository } from "../../shared/interfaces/repository/group-repository.interface";
 import {
   IConversationDocument,
   IGroupMember,

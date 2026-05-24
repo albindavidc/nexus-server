@@ -1,7 +1,11 @@
 import { injectable, inject } from "tsyringe";
 import { Response, Request } from "express";
-import { IAuthService, RegisterUserDto, LoginDto } from "../../shared/interfaces/IAuthService";
-import { IAuthRepository } from "../../shared/interfaces/IAuthRepository";
+import {
+  IAuthService,
+  RegisterUserDto,
+  LoginDto,
+} from "../../shared/interfaces/services/auth-service.interface";
+import { IAuthRepository } from "../../shared/interfaces/repository/auth-repository.interface";
 import { IUser } from "./auth.model";
 import jwt from "jsonwebtoken";
 import { JwtService } from "../../shared/utils/jwt.util";
@@ -11,11 +15,17 @@ import { TOKENS } from "../../shared/di/tokens";
 export default class AuthService implements IAuthService {
   constructor(
     @inject(TOKENS.JwtService) private jwtService: JwtService,
-    @inject(TOKENS.AuthRepository) private authRepo: IAuthRepository
+    @inject(TOKENS.AuthRepository) private authRepo: IAuthRepository,
   ) {}
 
-  async registerUser(res: Response, { firstName, lastName, username, email, password }: RegisterUserDto): Promise<IUser | Response> {
-    const existingUser = await this.authRepo.findByUsernameOrEmail(username, email);
+  async registerUser(
+    res: Response,
+    { firstName, lastName, username, email, password }: RegisterUserDto,
+  ): Promise<IUser | Response> {
+    const existingUser = await this.authRepo.findByUsernameOrEmail(
+      username,
+      email,
+    );
 
     if (existingUser) {
       const field = existingUser.email === email ? "email" : "username";
@@ -25,7 +35,13 @@ export default class AuthService implements IAuthService {
       });
     }
 
-    const user = await this.authRepo.createUser({ firstName, lastName, username, email, password });
+    const user = await this.authRepo.createUser({
+      firstName,
+      lastName,
+      username,
+      email,
+      password,
+    });
 
     const accessToken = this.jwtService.generateAccessToken(String(user._id));
     const refreshToken = this.jwtService.generateRefreshToken(String(user._id));
@@ -38,7 +54,10 @@ export default class AuthService implements IAuthService {
     return user;
   }
 
-  async login(res: Response, { email, password }: LoginDto): Promise<IUser | Response> {
+  async login(
+    res: Response,
+    { email, password }: LoginDto,
+  ): Promise<IUser | Response> {
     const user = await this.authRepo.findByEmailWithPassword(email);
 
     if (!user) {
@@ -96,8 +115,12 @@ export default class AuthService implements IAuthService {
       });
     }
 
-    const newAccessToken = this.jwtService.generateAccessToken(String(user._id));
-    const newRefreshToken = this.jwtService.generateRefreshToken(String(user._id));
+    const newAccessToken = this.jwtService.generateAccessToken(
+      String(user._id),
+    );
+    const newRefreshToken = this.jwtService.generateRefreshToken(
+      String(user._id),
+    );
 
     user.refreshToken = newRefreshToken;
     await this.authRepo.saveUser(user);

@@ -1,7 +1,7 @@
 import { injectable, inject } from "tsyringe";
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { IAuthService } from "../../shared/interfaces/IAuthService";
+import { IAuthService } from "../../shared/interfaces/services/auth-service.interface";
 import { TOKENS } from "../../shared/di/tokens";
 import { CustomRequest } from "../../middlewares/auth.middleware";
 import { ResponseHelper } from "../../shared/utils/response";
@@ -10,7 +10,11 @@ import { ResponseHelper } from "../../shared/utils/response";
 export default class AuthController {
   constructor(@inject(TOKENS.AuthService) private authService: IAuthService) {}
 
-  register = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
+  register = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -29,13 +33,19 @@ export default class AuthController {
 
       if (!user) return;
 
-      ResponseHelper.success(res, 201, "User registered successfully", { user });
+      ResponseHelper.success(res, 201, "User registered successfully", {
+        user,
+      });
     } catch (error) {
       next(error);
     }
   };
 
-  login = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
+  login = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -53,19 +63,29 @@ export default class AuthController {
     }
   };
 
-  refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
+  refreshToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       const user = await this.authService.refreshToken(res, req);
 
       if (!user) return;
 
-      ResponseHelper.success(res, 200, "Token refreshed successfully", { user });
+      ResponseHelper.success(res, 200, "Token refreshed successfully", {
+        user,
+      });
     } catch (error) {
       next(error);
     }
   };
 
-  logout = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
+  logout = async (
+    req: CustomRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       await this.authService.logout(res, req.userId as string);
       ResponseHelper.success(res, 200, "User logged out successfully");
@@ -74,7 +94,11 @@ export default class AuthController {
     }
   };
 
-  getUser = async (req: CustomRequest, res: Response, next: NextFunction): Promise<void | Response> => {
+  getUser = async (
+    req: CustomRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
     try {
       const user = await this.authService.getCurrentUser(req.userId as string);
 

@@ -1,5 +1,5 @@
 import { Response, Request } from "express";
-import { IUser } from "../../modules/auth/auth.model";
+import { IUser } from "../../../modules/auth/auth.model";
 
 export interface IAuthService {
   registerUser(res: Response, data: RegisterUserDto): Promise<IUser | Response>;

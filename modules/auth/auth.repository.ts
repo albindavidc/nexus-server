@@ -1,11 +1,14 @@
 import { injectable } from "tsyringe";
 import User, { IUser } from "./auth.model";
-import { IAuthRepository } from "../../shared/interfaces/IAuthRepository";
-import { RegisterUserDto } from "../../shared/interfaces/IAuthService";
+import { IAuthRepository } from "../../shared/interfaces/repository/auth-repository.interface";
+import { RegisterUserDto } from "../../shared/interfaces/services/auth-service.interface";
 
 @injectable()
 export default class AuthRepository implements IAuthRepository {
-  async findByUsernameOrEmail(username: string, email: string): Promise<IUser | null> {
+  async findByUsernameOrEmail(
+    username: string,
+    email: string,
+  ): Promise<IUser | null> {
     return User.findOne({
       $or: [{ username }, { email }],
     });
@@ -23,7 +26,10 @@ export default class AuthRepository implements IAuthRepository {
     return User.create(data);
   }
 
-  async updateUser(userId: string, data: Partial<IUser>): Promise<IUser | null> {
+  async updateUser(
+    userId: string,
+    data: Partial<IUser>,
+  ): Promise<IUser | null> {
     return User.findByIdAndUpdate(userId, data, { new: true });
   }
 
