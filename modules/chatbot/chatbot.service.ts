@@ -5,7 +5,7 @@ import {
 } from "@google/generative-ai";
 import { IChatBotService } from "../../shared/interfaces/services/chatbot-service.inteface";
 import AppError from "../../shared/errors/AppError";
-import { injectable } from "tsyringe";
+import { inject, injectable } from "tsyringe";
 import {
   IBulkChatRequestDto,
   IBulkChatResponseDto,
@@ -14,6 +14,9 @@ import {
   IChatBotResponseDto,
 } from "../../shared/types/chatbot.types";
 import logger from "../../shared/utils/logger";
+import { TOKENS } from "../../shared/di/tokens";
+import { IChatBotRepository } from "../../shared/interfaces/repository/chatbot-repository.interface";
+import { IAIMessage } from "./chatbot.model";
 
 const MODEL = "gemini-2.5-flash";
 const SYSTEM_PROMPT = `You are Nexus Coach, an expert AI fitness assistant
@@ -27,13 +30,16 @@ embedded in the Nexus calisthenics community app.
 You never diagnose medical conditions. Always recommend a doctor for injuries.
 Always respond in the same language the user writes in.`;
 
-const BULK_CONCORRENCY = 5;
+const BULK_CONCURRENCY = 5;
 
 @injectable()
 export class ChatBotService implements IChatBotService {
   private readonly genAI: GoogleGenerativeAI;
 
-  constructor() {
+  constructor(
+    @inject(TOKENS.ChatBotRepository)
+    private readonly chatBotRepository: IChatBotRepository,
+  ) {
     if (!process.env.GOOGLE_API_KEY) {
       throw new AppError("Google API Key is required", 404);
     }
@@ -46,13 +52,21 @@ export class ChatBotService implements IChatBotService {
     dto: IChatBotRequestDto,
   ): Promise<IChatBotResponseDto> {
     try {
+      const dbHistory = await this.chatBotRepository.getHistory(userId);
+
       const model = this.getModel();
-      const history = this.buildHistory(dto);
+      const history = this.buildHistory(dbHistory);
       const chat = model.startChat({ history });
       const result = await chat.sendMessage(dto.message);
       const reply = result.response.text();
 
-      logger.info(` ChatBot ${userId}: ${reply}`);
+      await this.chatBotRepository.appendMessagePair(
+        userId,
+        { role: "user", content: dto.message, createdAt: new Date() },
+        { role: "assistant", content: reply, createdAt: new Date() },
+      );
+
+      logger.info(`ChatBot ${userId}: ${reply}`);
       return { reply };
     } catch (error) {
       logger.error("Nexus Chatbot Error: ", error);
@@ -68,15 +82,27 @@ export class ChatBotService implements IChatBotService {
     onError: (err: Error) => void,
   ): Promise<void> {
     try {
+      const dbHistory = await this.chatBotRepository.getHistory(userId);
+
       const model = this.getModel();
-      const history = this.buildHistory(dto);
+      const history = this.buildHistory(dbHistory);
       const chat = model.startChat({ history });
       const result = await chat.sendMessageStream(dto.message);
 
+      let fullReply = "";
       for await (const chunk of result.stream) {
         const text = chunk.text();
-        if (text) onChunk(text);
+        if (text) {
+          fullReply += text;
+          onChunk(text);
+        }
       }
+
+      await this.chatBotRepository.appendMessagePair(
+        userId,
+        { role: "user", content: dto.message, createdAt: new Date() },
+        { role: "assistant", content: fullReply, createdAt: new Date() },
+      );
 
       logger.debug(`ChatBot streaming complete ${userId}: ${dto.message}`);
       onDone();
@@ -97,8 +123,8 @@ export class ChatBotService implements IChatBotService {
 
     const result: IBulkChatResult[] = [];
 
-    for (let i = 0; i < items.length; i += BULK_CONCORRENCY) {
-      const batch = items.slice(i, i + BULK_CONCORRENCY);
+    for (let i = 0; i < items.length; i += BULK_CONCURRENCY) {
+      const batch = items.slice(i, i + BULK_CONCURRENCY);
       const settled = await Promise.allSettled(
         batch.map((item) =>
           this.chat(userId, {
@@ -155,6 +181,14 @@ export class ChatBotService implements IChatBotService {
     };
   }
 
+  async getHistory(userId: string): Promise<IAIMessage[]> {
+    return this.chatBotRepository.getHistory(userId);
+  }
+
+  async clearHistory(userId: string): Promise<void> {
+    await this.chatBotRepository.clearHistory(userId);
+  }
+
   private getModel() {
     return this.genAI.getGenerativeModel({
       model: MODEL,
@@ -176,10 +210,10 @@ export class ChatBotService implements IChatBotService {
     });
   }
 
-  private buildHistory(dto: IChatBotRequestDto) {
-    return (dto.history ?? []).slice(-20).map((m) => ({
+  private buildHistory(messages: IAIMessage[]) {
+    return messages.slice(-20).map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.message }],
+      parts: [{ text: m.content }],
     }));
   }
 }

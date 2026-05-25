@@ -38,7 +38,7 @@ export default class ChatService implements IChatService {
     );
     if (!conversation) {
       conversation = await this.chatRepo.createConversation({
-        type: CONVERSATION_TYPE.USER,
+        type: CONVERSATION_TYPE.DIRECT,
         participants: [requesterId, targetUserId],
       });
       conversation = await this.chatRepo.findConversationById(

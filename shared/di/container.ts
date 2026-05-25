@@ -9,6 +9,7 @@ import ChatService from "../../modules/chat/chat.service";
 import { GroupRepository } from "../../modules/group/group.repository";
 import { GroupService } from "../../modules/group/group.service";
 import { ChatBotService } from "../../modules/chatbot/chatbot.service";
+import { ChatBotRepository } from "../../modules/chatbot/chatbot.repository";
 
 export function registerDependencies(): void {
   container.registerSingleton<JwtService>(TOKENS.JwtService, JwtService);
@@ -27,5 +28,9 @@ export function registerDependencies(): void {
   container.registerSingleton<ChatBotService>(
     TOKENS.ChatBotService,
     ChatBotService,
+  );
+  container.registerSingleton<ChatBotRepository>(
+    TOKENS.ChatBotRepository,
+    ChatBotRepository,
   );
 }
