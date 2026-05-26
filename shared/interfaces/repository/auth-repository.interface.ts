@@ -8,4 +8,5 @@ export interface IAuthRepository {
   createUser(data: RegisterUserDto): Promise<IUser>;
   updateUser(userId: string, data: Partial<IUser>): Promise<IUser | null>;
   saveUser(user: IUser): Promise<IUser>;
+  searchUsers(query: string, excludeUserId: string): Promise<IUser[]>;
 }

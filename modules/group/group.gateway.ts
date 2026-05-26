@@ -294,7 +294,7 @@ export const registerGroupHandlers = (socket: AuthSocket, io: Server): void => {
         io.to(groupId).emit(SOCKET_EVENTS.MEMBER_PROMOTED, {
           groupId,
           targetUserId: newOwnerId,
-          newRole: GROUP_ROLES.OWNER,
+          newRole: GROUP_ROLES.ADMIN,
           previousOwnerId: socket.user._id,
           actorId: socket.user._id,
           actorUserName: socket.user.userName,

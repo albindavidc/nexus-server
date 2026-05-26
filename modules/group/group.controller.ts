@@ -303,4 +303,93 @@ export class GroupController {
       next(err);
     }
   };
+
+  searchGroups = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return sendSuccess(res, 200, "Groups fetched successfully", { groups: [] });
+      }
+
+      const groups = await this.groupService.searchGroups(query);
+      sendSuccess(res, 200, "Groups fetched successfully", { groups });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  joinGroup = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { _id, userName } = (req as AuthRequest).user;
+      const groupId = req.params["groupId"] as string;
+
+      const group = await this.groupService.joinGroup(groupId, _id);
+
+      const io: Server = req.app.get("io");
+      if (io) {
+        io.to(groupId).emit(SOCKET_EVENTS.MEMBER_ADDED, {
+          groupId,
+          addedUserIds: [_id.toString()],
+          actorId: _id.toString(),
+          actorUserName: userName,
+        });
+        io.to(_id.toString()).emit(SOCKET_EVENTS.GROUP_CREATED, { group });
+      }
+
+      sendSuccess(res, 200, "Successfully joined the group", { group });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getGroupMessages = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { _id } = (req as AuthRequest).user;
+      const groupId = req.params["groupId"] as string;
+      const messages = await this.groupService.getGroupMessages(groupId, _id.toString());
+      sendSuccess(res, 200, "Group messages fetched successfully", { messages });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  sendGroupMessage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { _id } = (req as AuthRequest).user;
+      const groupId = req.params["groupId"] as string;
+      const { content } = req.body;
+
+      if (!content || !content.trim()) {
+        res.status(400).json({ success: false, message: "Content cannot be empty" });
+        return;
+      }
+
+      const message = await this.groupService.sendGroupMessage(groupId, _id.toString(), content);
+
+      const io: Server = req.app.get("io");
+      if (io) {
+        io.to(groupId).emit("group:newMessage", message);
+      }
+
+      sendSuccess(res, 201, "Message sent successfully", { message });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

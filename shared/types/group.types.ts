@@ -1,5 +1,5 @@
 import { Types, Document } from "mongoose";
-import { ConversationType, GroupRole, MessageType } from "../constants";
+import { ConversationType, GroupRole, MessageType, GroupPrivacy } from "../constants";
 
 // Conversation and Message Documents
 export interface IGroupMember {
@@ -9,24 +9,63 @@ export interface IGroupMember {
   addedBy?: Types.ObjectId;
 }
 
+export interface IPopulatedGroupMember extends Omit<IGroupMember, "user"> {
+  user: {
+    _id: Types.ObjectId;
+    id?: string;
+    username?: string;
+    email?: string;
+    avatar?: string;
+    status?: string;
+    lastSeen?: Date;
+  };
+}
+
 export interface IConversation {
   type: ConversationType;
 
   name: string;
   description?: string;
   avatar: string;
+  theme?: string;
   members: IGroupMember[];
 
   participants: Types.ObjectId[];
   admins: Types.ObjectId[];
   owner: Types.ObjectId;
+  creator?: Types.ObjectId;
   lastMessage: Types.ObjectId;
   isActive: boolean;
+
+  pins?: Types.ObjectId[];
+  isFavorite?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date | null;
 
   createdAt: Date;
   updatedAt: Date;
 }
 export interface IConversationDocument extends IConversation, Document {}
+
+export interface IGroup {
+  name: string;
+  description?: string;
+  avatar?: string;
+  privacy: GroupPrivacy;
+  members: IGroupMember[];
+  lastMessage?: Types.ObjectId;
+  isDeleted: boolean;
+  deletedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  theme?: string;
+  creator?: Types.ObjectId;
+
+  // virtuals
+  membersCount?: number;
+  adminIds?: Types.ObjectId[];
+}
+export interface IGroupDocument extends IGroup, Document {}
 
 export interface IDeliveredReceipt {
   userId: Types.ObjectId;

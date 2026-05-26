@@ -1,11 +1,13 @@
 import { Types } from "mongoose";
 import { IConversationDocument } from "../../types/group.types";
+import { IMessage } from "../../../modules/chat/message.model";
 
 export interface CreateGroupDto {
   name: string;
   description?: string;
   participantIds: string[];
   avatarUrl?: string;
+  theme?: string;
 }
 
 export interface UpdateGroupDto {
@@ -66,4 +68,12 @@ export interface IGroupService {
   ): Promise<IConversationDocument>;
 
   getMyGroups(userId: Types.ObjectId): Promise<IConversationDocument[]>;
+  searchGroups(query: string): Promise<IConversationDocument[]>;
+  joinGroup(groupId: string, requesterId: Types.ObjectId): Promise<IConversationDocument>;
+  getGroupMessages(groupId: string, userId: string): Promise<IMessage[]>;
+  sendGroupMessage(
+    groupId: string,
+    senderId: string,
+    content: string,
+  ): Promise<IMessage>;
 }

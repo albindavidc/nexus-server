@@ -36,6 +36,7 @@ export interface IChatRepository {
     userId: string,
   ): Promise<unknown>;
   countUnread(conversationId: string, userId: string): Promise<number>;
+  clearMessages(conversationId: string): Promise<void>;
 }
 
 export interface FindMessagesOptions {

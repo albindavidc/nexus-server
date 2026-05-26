@@ -36,4 +36,15 @@ export default class AuthRepository implements IAuthRepository {
   async saveUser(user: IUser): Promise<IUser> {
     return user.save({ validateBeforeSave: false });
   }
+
+  async searchUsers(query: string, excludeUserId: string): Promise<IUser[]> {
+    return User.find({
+      _id: { $ne: excludeUserId },
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { firstName: { $regex: query, $options: 'i' } },
+        { lastName: { $regex: query, $options: 'i' } }
+      ]
+    }).limit(20);
+  }
 }

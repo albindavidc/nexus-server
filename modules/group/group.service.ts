@@ -11,6 +11,7 @@ import {
   IGroupMember,
 } from "../../shared/types/group.types";
 import User from "../auth/auth.model";
+import Message, { IMessage } from "../chat/message.model";
 import { CONVERSATION_TYPE, GROUP_ROLES } from "../../shared/constants";
 import { Types } from "mongoose";
 import AppError from "../../shared/errors/AppError";
@@ -31,23 +32,21 @@ export class GroupService implements IGroupService {
     if (!name.trim()) throw new AppError("Group name is required", 400);
 
     const uniqueIds = Array.from(
-      new Set([...participantIds, creatorId.toString()]),
+      new Set([...(participantIds || []), creatorId.toString()]),
     );
-    if (uniqueIds.length < 2)
-      throw new AppError("Group must have at least 2 participants", 400);
+    if (uniqueIds.length < 1)
+      throw new AppError("Group must have at least 1 participant", 400);
 
     const foundUsers = await User.find({ _id: { $in: uniqueIds } });
-    if (foundUsers.length < 2)
-      throw new AppError("At least two users must exist in the group", 400);
+    if (foundUsers.length !== uniqueIds.length)
+      throw new AppError("One or more participants could not be found", 400);
 
-    const members: IGroupMember[] = uniqueIds.map((id, index) => ({
+    const members: IGroupMember[] = uniqueIds.map((id) => ({
       user: new Types.ObjectId(id),
       role:
         id === creatorId.toString()
-          ? GROUP_ROLES.OWNER
-          : index === 0
-            ? GROUP_ROLES.ADMIN
-            : GROUP_ROLES.MEMBER,
+          ? GROUP_ROLES.ADMIN
+          : GROUP_ROLES.MEMBER,
       joinedAt: new Date(),
       addedBy:
         id === creatorId.toString() ? undefined : new Types.ObjectId(creatorId),
@@ -58,7 +57,10 @@ export class GroupService implements IGroupService {
       name: dto.name,
       description: dto.description,
       avatar: dto.avatarUrl,
+      theme: dto.theme,
+      creator: creatorId,
       members,
+      participants: uniqueIds.map(id => new Types.ObjectId(id)),
       isActive: true,
     });
   }
@@ -104,7 +106,7 @@ export class GroupService implements IGroupService {
     groupId: string,
     requesterId: Types.ObjectId,
   ): Promise<void> {
-    await this._assertOwner(groupId, requesterId);
+    await this._assertAdminOrOwner(groupId, requesterId);
     await this.groupRepository.deleteById(groupId);
   }
 
@@ -162,8 +164,8 @@ export class GroupService implements IGroupService {
       targetObjectId,
     );
     if (!targetMember) throw new AppError("Member not found", 404);
-    if (targetMember.role === GROUP_ROLES.OWNER)
-      throw new AppError("Owner cannot be removed", 400);
+    if (targetMember.role === GROUP_ROLES.ADMIN && !isSelf)
+      throw new AppError("Admin cannot be removed by another member", 400);
 
     const updatedGroup = await this.groupRepository.removeMember(
       groupId,
@@ -178,15 +180,53 @@ export class GroupService implements IGroupService {
     groupId: string,
     requesterId: Types.ObjectId,
   ): Promise<void> {
-    const member = await this.groupRepository.getMember(groupId, requesterId);
-    if (!member) throw new AppError("You are not a member of this group", 404);
-    if (member.role === GROUP_ROLES.OWNER)
-      throw new AppError(
-        "Owner cannot leave the group — transfer ownership first",
-        400,
+    const group = await this.groupRepository.findById(groupId);
+    if (!group) throw new AppError("Group not found", 404);
+
+    const getUserId = (userObj: Types.ObjectId | { _id?: Types.ObjectId }): string => {
+      if (!userObj) return "";
+      return (userObj as { _id?: Types.ObjectId })._id
+        ? (userObj as { _id?: Types.ObjectId })._id!.toString()
+        : userObj.toString();
+    };
+
+    const reqUserIdStr = requesterId.toString();
+
+    const memberIndex = group.members.findIndex(
+      (m) => getUserId(m.user) === reqUserIdStr
+    );
+    if (memberIndex === -1) {
+      throw new AppError("You are not a member of this group", 404);
+    }
+
+    const leavingMember = group.members[memberIndex];
+
+    const admins = group.members.filter((m) => m.role === GROUP_ROLES.ADMIN);
+    const isLastAdmin = admins.length === 1 && leavingMember.role === GROUP_ROLES.ADMIN;
+
+    if (isLastAdmin && group.members.length > 1) {
+      const nextMember = group.members.find(
+        (m) => getUserId(m.user) !== reqUserIdStr
       );
+      if (nextMember) {
+        const nextMemberId = nextMember.user && (nextMember.user as { _id?: Types.ObjectId })._id 
+          ? (nextMember.user as { _id?: Types.ObjectId })._id!
+          : (nextMember.user as Types.ObjectId);
+
+        await this.groupRepository.updateMemberRole(
+          groupId,
+          nextMemberId,
+          GROUP_ROLES.ADMIN
+        );
+      }
+    }
 
     await this.groupRepository.removeMember(groupId, requesterId);
+
+    const updatedGroup = await this.groupRepository.findById(groupId);
+    if (updatedGroup && updatedGroup.members.length === 0) {
+      await this.groupRepository.deleteById(groupId);
+    }
   }
 
   async promoteMember(
@@ -203,8 +243,6 @@ export class GroupService implements IGroupService {
     );
 
     if (!targetMember) throw new AppError("Member not found", 404);
-    if (targetMember.role === GROUP_ROLES.OWNER)
-      throw new AppError("Owner cannot be promoted", 400);
     if (targetMember.role === GROUP_ROLES.ADMIN)
       throw new AppError("Member is already an admin", 400);
 
@@ -258,18 +296,18 @@ export class GroupService implements IGroupService {
       newOwnerObjectId,
     );
     if (!newOwnerMember)
-      throw new AppError("New owner is not a member of this group", 404);
+      throw new AppError("New admin is not a member of this group", 404);
 
     await this.groupRepository.updateMemberRole(
       groupId,
       currentOwnerId,
-      GROUP_ROLES.ADMIN,
+      GROUP_ROLES.MEMBER,
     );
 
     const updatedGroup = await this.groupRepository.updateMemberRole(
       groupId,
       newOwnerObjectId,
-      GROUP_ROLES.OWNER,
+      GROUP_ROLES.ADMIN,
     );
     if (!updatedGroup) throw new AppError("Failed to transfer ownership", 500);
 
@@ -278,21 +316,81 @@ export class GroupService implements IGroupService {
 
   private async _assertOwner(groupId: string, userId: Types.ObjectId) {
     const member = await this.groupRepository.getMember(groupId, userId);
-    if (!member || member.role !== GROUP_ROLES.OWNER)
-      throw new AppError("Only the group owner can perform this action", 403);
+    if (!member || member.role !== GROUP_ROLES.ADMIN)
+      throw new AppError("Only a group admin can perform this action", 403);
     return member;
   }
 
   private async _assertAdminOrOwner(groupId: string, userId: Types.ObjectId) {
     const member = await this.groupRepository.getMember(groupId, userId);
-    if (
-      !member ||
-      (member.role !== GROUP_ROLES.ADMIN && member.role !== GROUP_ROLES.OWNER)
-    )
+    if (!member || member.role !== GROUP_ROLES.ADMIN)
       throw new AppError(
-        "Only admins or the owner can perform this action",
+        "Only admins can perform this action",
         403,
       );
     return member;
+  }
+
+  async searchGroups(query: string): Promise<IConversationDocument[]> {
+    return this.groupRepository.searchGroups(query);
+  }
+
+  async joinGroup(groupId: string, requesterId: Types.ObjectId): Promise<IConversationDocument> {
+    const existingCheck = await this.groupRepository.isMember(groupId, requesterId);
+    if (existingCheck) {
+      throw new AppError("You are already a member of this group", 400);
+    }
+
+    const newMembers: IGroupMember[] = [{
+      user: requesterId,
+      role: GROUP_ROLES.MEMBER,
+      joinedAt: new Date(),
+    }];
+
+    const updatedGroup = await this.groupRepository.addMembers(
+      groupId,
+      newMembers,
+    );
+    if (!updatedGroup) throw new AppError("Group not found", 404);
+
+    return updatedGroup;
+  }
+
+  async getGroupMessages(groupId: string, userId: string): Promise<IMessage[]> {
+    const group = await this.groupRepository.findById(groupId);
+    if (!group) throw new AppError("Group not found", 404);
+
+    const isMember = await this.groupRepository.isMember(groupId, new Types.ObjectId(userId));
+    if (!isMember) throw new AppError("Unauthorized", 403);
+
+    return Message.find({ groupRef: groupId, isDeleted: false })
+      .populate("sender", "username avatar")
+      .sort({ createdAt: 1 })
+      .exec() as unknown as Promise<IMessage[]>;
+  }
+
+  async sendGroupMessage(
+    groupId: string,
+    senderId: string,
+    content: string,
+  ): Promise<IMessage> {
+    const group = await this.groupRepository.findById(groupId);
+    if (!group) throw new AppError("Group not found", 404);
+
+    const isMember = await this.groupRepository.isMember(groupId, new Types.ObjectId(senderId));
+    if (!isMember) throw new AppError("Unauthorized", 403);
+
+    const message = await Message.create({
+      groupRef: groupId,
+      conversation: null,
+      sender: new Types.ObjectId(senderId),
+      content: content.trim(),
+    });
+
+    await this.groupRepository.updateById(groupId, {
+      lastMessage: message._id as Types.ObjectId,
+    });
+
+    return message.populate("sender", "username avatar") as unknown as Promise<IMessage>;
   }
 }

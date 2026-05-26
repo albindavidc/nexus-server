@@ -36,6 +36,7 @@ export const createGroupValidator = [
     .isMongoId()
     .withMessage("Each participant must be a valid user ID"),
   body("avatarUrl").optional().isURL().withMessage("Avatar URL must be a valid URL"),
+  body("theme").optional().isString().withMessage("Theme must be a string"),
   validate,
 ];
 

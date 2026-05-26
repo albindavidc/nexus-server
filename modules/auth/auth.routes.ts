@@ -14,5 +14,6 @@ router.post("/refresh-token", authCtrl.refreshToken);
 
 router.post("/logout", authMiddleware.protect, authCtrl.logout);
 router.get("/user", authMiddleware.protect, authCtrl.getUser);
+router.get("/users/search", authMiddleware.protect, authCtrl.searchUsers);
 
 export default router;

@@ -4,6 +4,7 @@ import { TOKENS } from "./tokens";
 
 import { JwtService } from "../utils/jwt.util";
 import AuthService from "../../modules/auth/auth.service";
+import AuthRepository from "../../modules/auth/auth.repository";
 import ChatRepository from "../../modules/chat/chat.repository";
 import ChatService from "../../modules/chat/chat.service";
 import { GroupRepository } from "../../modules/group/group.repository";
@@ -13,6 +14,10 @@ import { ChatBotRepository } from "../../modules/chatbot/chatbot.repository";
 
 export function registerDependencies(): void {
   container.registerSingleton<JwtService>(TOKENS.JwtService, JwtService);
+  container.registerSingleton<AuthRepository>(
+    TOKENS.AuthRepository,
+    AuthRepository,
+  );
   container.registerSingleton<AuthService>(TOKENS.AuthService, AuthService);
   container.registerSingleton<ChatRepository>(
     TOKENS.ChatRepository,

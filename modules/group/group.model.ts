@@ -1,99 +1,108 @@
 import { model, Schema } from "mongoose";
-import { CONVERSATION_TYPE, GROUP_ROLES } from "../../shared/constants";
-import {
-  IConversation,
-  IConversationDocument,
-  IGroupMember,
-} from "../../shared/types/group.types";
+import { GROUP_ROLES, GROUP_PRIVACY } from "../../shared/constants";
+import { IGroup, IGroupMember } from "../../shared/types/group.types";
 
 const groupMemberSchema = new Schema<IGroupMember>(
   {
     user: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
+      type:     Schema.Types.ObjectId,
+      ref:      "User",
       required: true,
     },
     role: {
-      type: String,
-      enum: Object.values(GROUP_ROLES),
+      type:    String,
+      enum:    Object.values(GROUP_ROLES),
       default: GROUP_ROLES.MEMBER,
     },
     joinedAt: {
-      type: Date,
+      type:    Date,
       default: Date.now,
     },
     addedBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref:  "User",
     },
   },
-  { _id: true },
+  { _id: true }
 );
 
-const conversationSchema = new Schema<IConversation>(
+const groupSchema = new Schema<IGroup>(
   {
-    type: {
-      type: String,
-      enum: Object.values(CONVERSATION_TYPE),
-      required: true,
-      index: true,
-    },
     name: {
-      type: String,
-      trim: true,
-      maxlength: [80, "Name cannot be longer than 80 characters"],
+      type:      String,
+      required:  [true, "Group name is required"],
+      trim:      true,
+      maxlength: [80, "Group name cannot exceed 80 characters"],
     },
     description: {
-      type: String,
-      trim: true,
-      maxlength: [200, "Description cannot be longer than 200 characters"],
+      type:      String,
+      trim:      true,
+      maxlength: [200, "Description cannot exceed 200 characters"],
+      default:   "",
     },
     avatar: {
-      type: String,
+      type:    String,
       default: "",
     },
-
-    members: {
-      type: [groupMemberSchema],
-      required: true,
+    privacy: {
+      type:    String,
+      enum:    Object.values(GROUP_PRIVACY),
+      default: GROUP_PRIVACY.PUBLIC,
     },
-    participants: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    members: {
+      type:     [groupMemberSchema],
+      required: true,
+      default:  [],
+    },
     lastMessage: {
-      type: Schema.Types.ObjectId,
-      ref: "Message",
+      type:    Schema.Types.ObjectId,
+      ref:     "Message",
       default: null,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-      index: true,
+    isDeleted: {
+      type:    Boolean,
+      default: false,
+      index:   true,
+    },
+    deletedAt: {
+      type:    Date,
+      default: null,
+    },
+    theme: {
+      type:    String,
+      default: "#1e1e1e",
+    },
+    creator: {
+      type: Schema.Types.ObjectId,
+      ref:  "User",
+      default: null,
     },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  },
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true },
+    collection: "groups",
+  }
 );
 
-conversationSchema.index({ "members.user": 1 });
-conversationSchema.index({ type: 1, createdAt: -1 });
-conversationSchema.index({ updatedAt: 1 });
+// ── Indexes ──────────────────────────────────────────────
+groupSchema.index({ "members.user": 1 });
+groupSchema.index({ privacy: 1, isDeleted: 1 });
+groupSchema.index({ createdAt: -1 });
+groupSchema.index({ name: "text", description: "text" });
 
-conversationSchema.virtual("membersCount").get(function (
-  this: IConversationDocument,
-) {
+// ── Virtuals ─────────────────────────────────────────────
+groupSchema.virtual("membersCount").get(function () {
   return this.members?.length ?? 0;
 });
 
-const GroupConversation = model<IConversation>(
-  "Conversation",
-  conversationSchema,
-);
+groupSchema.virtual("adminIds").get(function () {
+  return this.members
+    .filter((m) => m.role === GROUP_ROLES.ADMIN)
+    .map((m) => m.user);
+});
 
-export default GroupConversation;
+const Group = model<IGroup>("Group", groupSchema, "groups");
+
+export default Group;

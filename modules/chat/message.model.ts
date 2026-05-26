@@ -2,12 +2,13 @@ import mongoose, { Document } from "mongoose";
 import { MESSAGE_TYPE } from "../../shared/constants/index";
 
 export interface IMessage extends Document {
-  conversation: mongoose.Types.ObjectId;
+  conversation?: mongoose.Types.ObjectId | null;
+  groupRef?: mongoose.Types.ObjectId | null;
   type: string;
   sender: mongoose.Types.ObjectId;
   content: string;
   mediaURL?: string;
-  replayTo?: mongoose.Types.ObjectId;
+  replyTo?: mongoose.Types.ObjectId;
   readBy: { user: mongoose.Types.ObjectId; readAt: Date }[];
   deliveredTo: { user: mongoose.Types.ObjectId; deliveredAt: Date }[];
   isDeleted: boolean;
@@ -19,7 +20,14 @@ const messageSchema = new mongoose.Schema(
     conversation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
-      required: true,
+      required: false,
+      default: null,
+      index: true,
+    },
+    groupRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
       index: true,
     },
     type: {
@@ -40,7 +48,7 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    replayTo: {
+    replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
       default: null,
@@ -82,6 +90,7 @@ const messageSchema = new mongoose.Schema(
 );
 
 messageSchema.index({ conversation: 1, createdAt: -1 });
+messageSchema.index({ groupRef: 1, createdAt: -1 });
 
 const Message = mongoose.model<IMessage>("Message", messageSchema);
 

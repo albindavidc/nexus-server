@@ -111,4 +111,22 @@ export default class AuthController {
       next(error);
     }
   };
+
+  searchUsers = async (
+    req: CustomRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return ResponseHelper.success(res, 200, "Users fetched successfully", { users: [] });
+      }
+
+      const users = await this.authService.searchUsers(query, req.userId as string);
+      ResponseHelper.success(res, 200, "Users fetched successfully", { users });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -7,6 +7,7 @@ export interface IAuthService {
   refreshToken(res: Response, req: Request): Promise<IUser | Response>;
   logout(res: Response, userId: string): Promise<boolean>;
   getCurrentUser(userId: string): Promise<IUser | null>;
+  searchUsers(query: string, excludeUserId: string): Promise<IUser[]>;
 }
 
 export interface RegisterUserDto {

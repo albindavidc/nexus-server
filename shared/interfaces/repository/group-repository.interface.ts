@@ -10,6 +10,7 @@ export interface IGroupRepository {
     userId: string,
   ): Promise<IConversationDocument | null>;
   findAllByParticipants(userId: string): Promise<IConversationDocument[]>;
+  searchGroups(query: string): Promise<IConversationDocument[]>;
   updateById(
     id: string,
     data: Partial<IConversationDocument>,

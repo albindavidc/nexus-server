@@ -40,11 +40,11 @@ export class ChatBotService implements IChatBotService {
     @inject(TOKENS.ChatBotRepository)
     private readonly chatBotRepository: IChatBotRepository,
   ) {
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new AppError("Google API Key is required", 404);
+    if (!process.env.GEMINI_API_KEY) {
+      throw new AppError("Gemini API Key is required", 404);
     }
 
-    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
 
   async chat(

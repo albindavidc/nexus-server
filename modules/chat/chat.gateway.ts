@@ -1,6 +1,8 @@
 import { injectable, inject, container } from "tsyringe";
 import { Server, Socket as IOSocket } from "socket.io";
 import * as http from "http";
+import { Application } from "express";
+import { registerGroupHandlers } from "../group/group.gateway";
 import {
   CustomSocket,
   AuthMiddleware,
@@ -19,7 +21,7 @@ export class ChatGateway {
     @inject(TOKENS.ChatRepository) private chatRepo: IChatRepository,
   ) {}
 
-  initialize(httpServer: http.Server, clientUrl: string): void {
+  initialize(httpServer: http.Server, clientUrl: string, expressApp?: Application): void {
     this.io = new Server(httpServer, {
       cors: {
         origin: clientUrl,
@@ -29,6 +31,10 @@ export class ChatGateway {
       pingInterval: 10_000,
       pingTimeout: 15_000,
     });
+
+    if (expressApp) {
+      expressApp.set("io", this.io);
+    }
 
     const authMiddleware = container.resolve(AuthMiddleware);
     this.io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
@@ -43,7 +49,9 @@ export class ChatGateway {
     logger.debug(`User ${userId} connected`);
 
     this.onUserConnect(socket, userId);
-    socket.join(userId); 
+    socket.join(userId);
+
+    registerGroupHandlers(socket as unknown as Parameters<typeof registerGroupHandlers>[0], this.io);
 
     socket.on(
       SOCKET_EVENTS.JOIN_CONVERSATION,
@@ -286,9 +294,15 @@ export class ChatGateway {
     socket.emit(SOCKET_EVENTS.SOCKET_ERROR, { message });
     logger.debug(`Error emitted to ${socket.userId}: ${message}`);
   }
+
+  broadcastToConversation(conversationId: string, event: string, data: unknown): void {
+    if (this.io) {
+      this.io.to(conversationId).emit(event, data);
+    }
+  }
 }
 
-export function initSocket(httpServer: http.Server, clientUrl: string): void {
+export function initSocket(httpServer: http.Server, clientUrl: string, expressApp?: Application): void {
   const gateway = container.resolve(ChatGateway);
-  gateway.initialize(httpServer, clientUrl);
+  gateway.initialize(httpServer, clientUrl, expressApp);
 }

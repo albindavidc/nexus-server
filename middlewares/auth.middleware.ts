@@ -71,7 +71,20 @@ export class AuthMiddleware {
     next: (err?: Error | unknown) => void,
   ): Promise<void> => {
     try {
-      const token = socket.handshake.auth?.token;
+      let token = socket.handshake.auth?.token;
+      if (!token && socket.handshake.headers.cookie) {
+        const cookies = socket.handshake.headers.cookie.split(";").reduce((acc: Record<string, string>, cookie: string) => {
+          const parts = cookie.trim().split("=");
+          if (parts.length >= 2) {
+            const key = parts[0];
+            const val = parts.slice(1).join("=");
+            acc[key] = val;
+          }
+          return acc;
+        }, {} as Record<string, string>);
+        token = cookies["access_token"];
+      }
+
       if (!token) {
         return next(new Error("Unauthenticated"));
       }

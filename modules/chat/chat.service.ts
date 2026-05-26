@@ -1,6 +1,7 @@
 import { injectable, inject } from "tsyringe";
+import { Types } from "mongoose";
 import User from "../auth/auth.model";
-import { IConversation } from "./conversation.model";
+import { IConversation, IConversationDocument } from "./conversation.model";
 import { IMessage } from "./message.model";
 import AppError from "../../shared/errors/AppError";
 import {
@@ -13,7 +14,7 @@ import {
   FindMessagesOptions,
 } from "../../shared/interfaces/repository/chat-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
-import { CONVERSATION_TYPE, MESSAGE_TYPE } from "../../shared/constants/index";
+import { CONVERSATION_TYPE, MESSAGE_TYPE, GROUP_ROLES } from "../../shared/constants/index";
 
 @injectable()
 export default class ChatService implements IChatService {
@@ -42,7 +43,7 @@ export default class ChatService implements IChatService {
         participants: [requesterId, targetUserId],
       });
       conversation = await this.chatRepo.findConversationById(
-        String(conversation._id),
+        String((conversation as IConversationDocument)._id),
         requesterId,
       );
     }
@@ -68,15 +69,22 @@ export default class ChatService implements IChatService {
       throw new AppError("One or more participants not found.", 404);
     }
 
+    const members = uniqueIds.map((id) => ({
+      user: new Types.ObjectId(id),
+      role: id === creatorId ? GROUP_ROLES.ADMIN : GROUP_ROLES.MEMBER,
+      joinedAt: new Date(),
+    }));
+
     const conversation = await this.chatRepo.createConversation({
       type: CONVERSATION_TYPE.GROUP,
       name: name.trim(),
-      participants: uniqueIds,
-      admin: creatorId,
+      participants: uniqueIds.map((id) => new Types.ObjectId(id)),
+      members,
+      creator: new Types.ObjectId(creatorId),
     });
 
     return this.chatRepo.findConversationById(
-      String(conversation._id),
+      String((conversation as IConversationDocument)._id),
       creatorId,
     ) as Promise<IConversation>;
   }
@@ -165,5 +173,16 @@ export default class ChatService implements IChatService {
     await message.save();
 
     return message;
+  }
+
+  async clearConversation(conversationId: string, userId: string): Promise<void> {
+    const conversation = await this.chatRepo.findConversationById(
+      conversationId,
+      userId,
+    );
+    if (!conversation)
+      throw new AppError("Conversation not found or access denied.", 404);
+
+    await this.chatRepo.clearMessages(conversationId);
   }
 }

@@ -40,5 +40,6 @@ router.patch(
 );
 
 router.delete("/messages/:messageId", ChatValidator.messageIdRules, ctrl.deleteMessage as RequestHandler);
+router.delete("/conversations/:conversationId/clear", ChatValidator.conversationIdRules, ctrl.clearConversation as RequestHandler);
 
 export default router;

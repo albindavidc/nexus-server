@@ -12,26 +12,29 @@ import { initSocket } from "./modules/chat/chat.gateway";
 import logger from "./shared/utils/logger";
 import http from "http";
 
-async function startServer(): Promise<void> {
-  try {
-    const db = new DatabaseConnection(process.env.MONGO_URI as string);
-    await db.connect();
+class Server {
+  public async bootstrap(): Promise<void> {
+    try {
+      const db = new DatabaseConnection(process.env.MONGO_URI as string);
+      await db.connect();
 
-    const application = new Application();
-    const expressApp = application.getApp();
+      const application = new Application();
+      const expressApp = application.getApp();
 
-    const httpServer = http.createServer(expressApp);
+      const httpServer = http.createServer(expressApp);
 
-    initSocket(httpServer, process.env.CLIENT_URL as string);
+      initSocket(httpServer, process.env.CLIENT_URL as string, expressApp);
 
-    const port = process.env.PORT ?? 5000;
-    httpServer.listen(port, () => {
-      logger.info(`Server started on port ${port}`);
-    });
-  } catch (error) {
-    logger.error("Failed to start server:", error);
-    process.exit(1);
+      const port = process.env.PORT ?? 5000;
+      httpServer.listen(port, () => {
+        logger.info(`\n===============================================\n🌟 Server started on port ${port}\n===============================================`);
+      });
+    } catch (error) {
+      logger.error("Failed to start server:", error);
+      process.exit(1);
+    }
   }
 }
 
-startServer();
+const server = new Server();
+server.bootstrap();

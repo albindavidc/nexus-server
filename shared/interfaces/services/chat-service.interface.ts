@@ -29,6 +29,7 @@ export interface IChatService {
   ): Promise<IMessage[]>;
   markAsRead(conversationId: string, userId: string): Promise<void>;
   deleteMessage(messageId: string, userId: string): Promise<IMessage>;
+  clearConversation(conversationId: string, userId: string): Promise<void>;
 }
 
 export interface CreateGroupDto {

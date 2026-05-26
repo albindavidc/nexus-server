@@ -5,10 +5,14 @@ import { TOKENS } from "../../shared/di/tokens";
 import { AuthenticatedRequest } from "../../middlewares/auth.middleware";
 import { ResponseHelper } from "../../shared/utils/response";
 import { FindMessagesOptions } from "../../shared/interfaces/repository/chat-repository.interface";
+import { ChatGateway } from "./chat.gateway";
 
 @injectable()
 export default class ChatController {
-  constructor(@inject(TOKENS.ChatService) private chatService: IChatService) {}
+  constructor(
+    @inject(TOKENS.ChatService) private chatService: IChatService,
+    private chatGateway: ChatGateway,
+  ) {}
 
   getMyConversations = async (
     req: AuthenticatedRequest,
@@ -114,6 +118,11 @@ export default class ChatController {
         String(req.params.conversationId),
         req.body,
       );
+      this.chatGateway.broadcastToConversation(
+        String(req.params.conversationId),
+        "new_message",
+        message,
+      );
       ResponseHelper.success(res, 201, "Message sent.", { message });
     } catch (err) {
       next(err);
@@ -147,6 +156,22 @@ export default class ChatController {
         String(req.user._id),
       );
       ResponseHelper.success(res, 200, "Message deleted.");
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  clearConversation = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      await this.chatService.clearConversation(
+        String(req.params.conversationId),
+        String(req.user._id),
+      );
+      ResponseHelper.success(res, 200, "Conversation history cleared.");
     } catch (err) {
       next(err);
     }

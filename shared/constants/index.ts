@@ -1,11 +1,11 @@
 export const DEFAULT_PAGE_SIZE = 30;
 export const MAX_PAGE_SIZE = 100;
 
-export const CONVERSATION_TYPE = Object.freeze({
-  DIRECT: "direct",
-  GROUP: "group",
-  AI_COACH: "ai_coach",
-});
+export const CONVERSATION_TYPE = {
+  DIRECT: "direct",   // 1-on-1 DM — shown in CHAT tab
+  GROUP:  "group",    // Group chat — shown in GROUPS tab
+  AI:     "ai",       // Nexus AI coach — shown in CHAT tab
+} as const;
 export type ConversationType =
   (typeof CONVERSATION_TYPE)[keyof typeof CONVERSATION_TYPE];
 
@@ -24,12 +24,17 @@ export const USER_STATUS = Object.freeze({
 });
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
-export const GROUP_ROLES = Object.freeze({
-  ADMIN: "admin",
-  OWNER: "owner",
+export const GROUP_ROLES = {
+  ADMIN:  "admin",
   MEMBER: "member",
-});
+} as const;
 export type GroupRole = (typeof GROUP_ROLES)[keyof typeof GROUP_ROLES];
+
+export const GROUP_PRIVACY = {
+  PUBLIC:  "public",
+  PRIVATE: "private",
+} as const;
+export type GroupPrivacy = (typeof GROUP_PRIVACY)[keyof typeof GROUP_PRIVACY];
 
 export const SOCKET_EVENTS = Object.freeze({
   CONNECT: "connect",

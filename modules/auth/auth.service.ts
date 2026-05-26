@@ -144,4 +144,8 @@ export default class AuthService implements IAuthService {
   async getCurrentUser(userId: string): Promise<IUser | null> {
     return this.authRepo.findById(userId);
   }
+
+  async searchUsers(query: string, excludeUserId: string): Promise<IUser[]> {
+    return this.authRepo.searchUsers(query, excludeUserId);
+  }
 }

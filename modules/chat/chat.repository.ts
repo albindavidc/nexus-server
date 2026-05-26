@@ -16,6 +16,7 @@ export default class ChatRepository implements IChatRepository {
     return Conversation.findOne({
       type: CONVERSATION_TYPE.DIRECT,
       participants: { $all: [userAId, userBId], $size: 2 },
+      isDeleted: false,
     })
       .populate("participants", "username avatar status lastSeen")
       .populate({
@@ -32,8 +33,17 @@ export default class ChatRepository implements IChatRepository {
     conversationId: string,
     userId: string,
   ): Promise<IConversation | null> {
-    return Conversation.findOne({ _id: conversationId, participants: userId })
+    return Conversation.findOne({
+      _id: conversationId,
+      $or: [
+        { type: CONVERSATION_TYPE.GROUP, "members.user": userId },
+        { type: { $in: [CONVERSATION_TYPE.DIRECT, CONVERSATION_TYPE.AI] }, participants: userId }
+      ],
+      isDeleted: false
+    })
       .populate("participants", "username avatar status lastSeen")
+      .populate("members.user", "username avatar status lastSeen")
+      .populate("creator", "username avatar status lastSeen")
       .populate({
         path: "lastMessage",
         populate: { path: "sender", select: "username avatar" },
@@ -41,8 +51,13 @@ export default class ChatRepository implements IChatRepository {
   }
 
   findConversationsByUser(userId: string): Promise<IConversation[]> {
-    return Conversation.find({ participants: userId })
+    return Conversation.find({
+      type: { $in: [CONVERSATION_TYPE.DIRECT, CONVERSATION_TYPE.AI] },
+      participants: userId,
+      isDeleted: false,
+    })
       .populate("participants", "username avatar status lastSeen")
+      .populate("creator", "username avatar status lastSeen")
       .populate({
         path: "lastMessage",
         populate: { path: "sender", select: "username avatar" },
@@ -144,5 +159,12 @@ export default class ChatRepository implements IChatRepository {
       sender: { $ne: userId },
       isDeleted: false,
     });
+  }
+
+  async clearMessages(conversationId: string): Promise<void> {
+    await Message.updateMany(
+      { conversation: conversationId },
+      { $set: { isDeleted: true, deletedAt: new Date() } }
+    );
   }
 }
