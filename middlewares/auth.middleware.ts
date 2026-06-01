@@ -22,7 +22,7 @@ export interface CustomSocket extends Socket {
 
 @injectable()
 export class AuthMiddleware {
-  constructor(@inject(TOKENS.JwtService) private jwtService: IJwtService) {}
+  constructor(@inject(TOKENS.JwtService) private _jwtService: IJwtService) {}
 
   protect = async (
     req: CustomRequest,
@@ -40,7 +40,7 @@ export class AuthMiddleware {
 
       let decodedToken: jwt.JwtPayload | string;
       try {
-        decodedToken = await this.jwtService.verifyAccessToken(token);
+        decodedToken = await this._jwtService.verifyAccessToken(token);
       } catch {
         return res.status(401).json({
           success: false,
@@ -91,7 +91,7 @@ export class AuthMiddleware {
 
       let decodedToken: jwt.JwtPayload | string;
       try {
-        decodedToken = await this.jwtService.verifyAccessToken(token);
+        decodedToken = await this._jwtService.verifyAccessToken(token);
       } catch {
         return next(new Error("Invalid Token"));
       }

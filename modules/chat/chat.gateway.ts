@@ -15,16 +15,19 @@ import User from "../auth/auth.model";
 
 @injectable()
 export class ChatGateway {
-  private io!: Server;
+  private _io!: Server;
 
   constructor(
-    @inject(TOKENS.ChatRepository) private chatRepo: IChatRepository,
+    @inject(TOKENS.ChatRepository) private _chatRepo: IChatRepository,
   ) {}
 
   initialize(httpServer: http.Server, clientUrl: string, expressApp?: Application): void {
-    this.io = new Server(httpServer, {
+    this._io = new Server(httpServer, {
       cors: {
-        origin: clientUrl,
+        origin: [
+          'http://localhost:4200',
+          clientUrl,
+        ].filter(Boolean),
         methods: ["GET", "POST"],
         credentials: true,
       },
@@ -33,13 +36,13 @@ export class ChatGateway {
     });
 
     if (expressApp) {
-      expressApp.set("io", this.io);
+      expressApp.set("io", this._io);
     }
 
     const authMiddleware = container.resolve(AuthMiddleware);
-    this.io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
+    this._io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
 
-    this.io.on(SOCKET_EVENTS.CONNECT, (socket: IOSocket) => {
+    this._io.on(SOCKET_EVENTS.CONNECT, (socket: IOSocket) => {
       this.handleConnection(socket as CustomSocket);
     });
   }
@@ -51,7 +54,7 @@ export class ChatGateway {
     this.onUserConnect(socket, userId);
     socket.join(userId);
 
-    registerGroupHandlers(socket as unknown as Parameters<typeof registerGroupHandlers>[0], this.io);
+    registerGroupHandlers(socket as unknown as Parameters<typeof registerGroupHandlers>[0], this._io);
 
     socket.on(
       SOCKET_EVENTS.JOIN_CONVERSATION,
@@ -134,7 +137,7 @@ export class ChatGateway {
     status: string,
   ): Promise<void> {
     try {
-      const conversations = await this.chatRepo.findConversationsByUser(userId);
+      const conversations = await this._chatRepo.findConversationsByUser(userId);
       conversations.forEach((conversation) => {
         const otherParticipant = conversation.participants.find(
           (p) => p.toString() !== userId,
@@ -143,7 +146,7 @@ export class ChatGateway {
 
         if (!targetId) return;
 
-        this.io
+        this._io
           .to(targetId)
           .emit(
             status === USER_STATUS.ONLINE
@@ -167,7 +170,7 @@ export class ChatGateway {
       if (!conversationId)
         return this.emitError(socket, "Conversation ID is required");
 
-      const conversation = await this.chatRepo.findConversationById(
+      const conversation = await this._chatRepo.findConversationById(
         conversationId,
         socket.userId as string,
       );
@@ -194,7 +197,7 @@ export class ChatGateway {
       if (!conversationId)
         return this.emitError(socket, "Conversation ID is required");
 
-      const conversation = await this.chatRepo.findConversationById(
+      const conversation = await this._chatRepo.findConversationById(
         conversationId,
         socket.userId as string,
       );
@@ -233,7 +236,7 @@ export class ChatGateway {
       if (!content)
         return this.emitError(socket, "Message content is required");
 
-      const message = await this.chatRepo.createMessage({
+      const message = await this._chatRepo.createMessage({
         sender: socket.userId,
         conversation: conversationId,
         content,
@@ -242,7 +245,7 @@ export class ChatGateway {
         replyTo,
       });
 
-      this.io.to(conversationId).emit(SOCKET_EVENTS.NEW_MESSAGE, message);
+      this._io.to(conversationId).emit(SOCKET_EVENTS.NEW_MESSAGE, message);
     } catch (error) {
       logger.error(`handleSendMessage failed for ${socket.userId}:`, error);
       this.emitError(socket, "Failed to send message");
@@ -257,18 +260,18 @@ export class ChatGateway {
       if (!conversationId)
         return this.emitError(socket, "Conversation ID is required");
 
-      const conversation = await this.chatRepo.findConversationById(
+      const conversation = await this._chatRepo.findConversationById(
         conversationId,
         socket.userId as string,
       );
       if (!conversation)
         return this.emitError(socket, "Conversation not found");
 
-      const result = await this.chatRepo.markConversationRead(
+      const result = await this._chatRepo.markConversationRead(
         conversationId,
         socket.userId as string,
       );
-      this.io.to(conversationId).emit(SOCKET_EVENTS.MESSAGE_READ, result);
+      this._io.to(conversationId).emit(SOCKET_EVENTS.MESSAGE_READ, result);
     } catch (error) {
       logger.error(`handleReadMessage failed for ${socket.userId}:`, error);
       this.emitError(socket, "Failed to mark as read");
@@ -296,8 +299,8 @@ export class ChatGateway {
   }
 
   broadcastToConversation(conversationId: string, event: string, data: unknown): void {
-    if (this.io) {
-      this.io.to(conversationId).emit(event, data);
+    if (this._io) {
+      this._io.to(conversationId).emit(event, data);
     }
   }
 }

@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
     "dev": "nodemon server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint .",

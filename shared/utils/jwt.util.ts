@@ -5,10 +5,10 @@ import { IJwtService } from "../interfaces/services/jwt-service.interface";
 
 @injectable()
 export class JwtService implements IJwtService {
-  private readonly accessSecret: string;
-  private readonly refreshSecret: string;
-  private readonly accessExpiresIn: string;
-  private readonly refreshExpiresIn: string;
+  private readonly _accessSecret: string;
+  private readonly _refreshSecret: string;
+  private readonly _accessExpiresIn: string;
+  private readonly _refreshExpiresIn: string;
 
   private readonly ACCESS_COOKIE_NAME = "access_token";
   private readonly REFRESH_COOKIE_NAME = "refresh_token";
@@ -16,32 +16,32 @@ export class JwtService implements IJwtService {
   private readonly REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
   constructor() {
-    this.accessSecret = process.env.JWT_ACCESS_TOKEN as string;
-    this.refreshSecret = process.env.JWT_REFRESH_TOKEN as string;
-    this.accessExpiresIn =
+    this._accessSecret = process.env.JWT_ACCESS_TOKEN as string;
+    this._refreshSecret = process.env.JWT_REFRESH_TOKEN as string;
+    this._accessExpiresIn =
       (process.env.JWT_ACCESS_TOKEN_EXPIRES_IN as string) || "15m";
-    this.refreshExpiresIn =
+    this._refreshExpiresIn =
       (process.env.JWT_REFRESH_TOKEN_EXPIRES_IN as string) || "7d";
   }
 
   generateAccessToken(userId: string): string {
-    return jwt.sign({ userId }, this.accessSecret, {
-      expiresIn: this.accessExpiresIn as jwt.SignOptions["expiresIn"],
+    return jwt.sign({ userId }, this._accessSecret, {
+      expiresIn: this._accessExpiresIn as jwt.SignOptions["expiresIn"],
     });
   }
 
   generateRefreshToken(userId: string): string {
-    return jwt.sign({ userId }, this.refreshSecret, {
-      expiresIn: this.refreshExpiresIn as jwt.SignOptions["expiresIn"],
+    return jwt.sign({ userId }, this._refreshSecret, {
+      expiresIn: this._refreshExpiresIn as jwt.SignOptions["expiresIn"],
     });
   }
 
   async verifyAccessToken(token: string): Promise<jwt.JwtPayload | string> {
-    return jwt.verify(token, this.accessSecret);
+    return jwt.verify(token, this._accessSecret);
   }
 
   async verifyRefreshToken(token: string): Promise<jwt.JwtPayload | string> {
-    return jwt.verify(token, this.refreshSecret);
+    return jwt.verify(token, this._refreshSecret);
   }
 
   setCookies(res: Response, accessToken: string, refreshToken: string): void {

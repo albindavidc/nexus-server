@@ -29,7 +29,10 @@ export class Application {
     this.app.use(cookieParser());
     this.app.use(
       cors({
-        origin: process.env.CLIENT_URL,
+        origin: [
+          'http://localhost:4200',
+          process.env.CLIENT_URL as string,
+        ].filter(Boolean),
         credentials: true,
       })
     );
@@ -40,7 +43,6 @@ export class Application {
   private applyRoutes(): void {
     this.app.use("/api/v1/auth", authRoutes);
     this.app.use("/api/v1/chat", chatRoutes);
-    // this.app.use("/api/v1/group", groupRoutes);
     this.app.use("/api/v1/groups", groupRoutes);
     this.app.use("/api/v1/chatbot", chatbotRoutes);
   }

@@ -8,7 +8,7 @@ import { ResponseHelper } from "../../shared/utils/response";
 
 @injectable()
 export default class AuthController {
-  constructor(@inject(TOKENS.AuthService) private authService: IAuthService) {}
+  constructor(@inject(TOKENS.AuthService) private _authService: IAuthService) {}
 
   register = async (
     req: Request,
@@ -23,7 +23,7 @@ export default class AuthController {
 
       const { firstName, lastName, username, email, password } = req.body;
 
-      const user = await this.authService.registerUser(res, {
+      const user = await this._authService.registerUser(res, {
         firstName,
         lastName,
         username,
@@ -53,7 +53,7 @@ export default class AuthController {
       }
 
       const { email, password } = req.body;
-      const user = await this.authService.login(res, { email, password });
+      const user = await this._authService.login(res, { email, password });
 
       if (!user) return;
 
@@ -69,7 +69,7 @@ export default class AuthController {
     next: NextFunction,
   ): Promise<void | Response> => {
     try {
-      const user = await this.authService.refreshToken(res, req);
+      const user = await this._authService.refreshToken(res, req);
 
       if (!user) return;
 
@@ -87,7 +87,7 @@ export default class AuthController {
     next: NextFunction,
   ): Promise<void | Response> => {
     try {
-      await this.authService.logout(res, req.userId as string);
+      await this._authService.logout(res, req.userId as string);
       ResponseHelper.success(res, 200, "User logged out successfully");
     } catch (error) {
       next(error);
@@ -100,7 +100,7 @@ export default class AuthController {
     next: NextFunction,
   ): Promise<void | Response> => {
     try {
-      const user = await this.authService.getCurrentUser(req.userId as string);
+      const user = await this._authService.getCurrentUser(req.userId as string);
 
       if (!user) {
         return ResponseHelper.error(res, 404, "User not found");
@@ -123,7 +123,7 @@ export default class AuthController {
         return ResponseHelper.success(res, 200, "Users fetched successfully", { users: [] });
       }
 
-      const users = await this.authService.searchUsers(query, req.userId as string);
+      const users = await this._authService.searchUsers(query, req.userId as string);
       ResponseHelper.success(res, 200, "Users fetched successfully", { users });
     } catch (error) {
       next(error);

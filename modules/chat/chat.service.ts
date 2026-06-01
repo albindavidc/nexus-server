@@ -19,7 +19,7 @@ import { CONVERSATION_TYPE, MESSAGE_TYPE, GROUP_ROLES } from "../../shared/const
 @injectable()
 export default class ChatService implements IChatService {
   constructor(
-    @inject(TOKENS.ChatRepository) private chatRepo: IChatRepository,
+    @inject(TOKENS.ChatRepository) private _chatRepo: IChatRepository,
   ) {}
 
   async getOrCreateDirectConversation(
@@ -33,16 +33,16 @@ export default class ChatService implements IChatService {
     const targetUser = await User.findById(targetUserId).select("_id username");
     if (!targetUser) throw new AppError("User not found.", 404);
 
-    let conversation = await this.chatRepo.findDirectConversation(
+    let conversation = await this._chatRepo.findDirectConversation(
       requesterId,
       targetUserId,
     );
     if (!conversation) {
-      conversation = await this.chatRepo.createConversation({
+      conversation = await this._chatRepo.createConversation({
         type: CONVERSATION_TYPE.DIRECT,
         participants: [requesterId, targetUserId],
       });
-      conversation = await this.chatRepo.findConversationById(
+      conversation = await this._chatRepo.findConversationById(
         String((conversation as IConversationDocument)._id),
         requesterId,
       );
@@ -75,7 +75,7 @@ export default class ChatService implements IChatService {
       joinedAt: new Date(),
     }));
 
-    const conversation = await this.chatRepo.createConversation({
+    const conversation = await this._chatRepo.createConversation({
       type: CONVERSATION_TYPE.GROUP,
       name: name.trim(),
       participants: uniqueIds.map((id) => new Types.ObjectId(id)),
@@ -83,21 +83,21 @@ export default class ChatService implements IChatService {
       creator: new Types.ObjectId(creatorId),
     });
 
-    return this.chatRepo.findConversationById(
+    return this._chatRepo.findConversationById(
       String((conversation as IConversationDocument)._id),
       creatorId,
     ) as Promise<IConversation>;
   }
 
   async getMyConversations(userId: string): Promise<IConversation[]> {
-    return this.chatRepo.findConversationsByUser(userId);
+    return this._chatRepo.findConversationsByUser(userId);
   }
 
   async getConversationById(
     conversationId: string,
     userId: string,
   ): Promise<IConversation> {
-    const conversation = await this.chatRepo.findConversationById(
+    const conversation = await this._chatRepo.findConversationById(
       conversationId,
       userId,
     );
@@ -110,7 +110,7 @@ export default class ChatService implements IChatService {
     conversationId: string,
     { content, type = MESSAGE_TYPE.TEXT, replyTo, mediaUrl }: SendMessageDto,
   ): Promise<IMessage> {
-    const conversation = await this.chatRepo.findConversationById(
+    const conversation = await this._chatRepo.findConversationById(
       conversationId,
       senderId,
     );
@@ -121,7 +121,7 @@ export default class ChatService implements IChatService {
       throw new AppError("Message content cannot be empty.", 400);
     }
 
-    const message = await this.chatRepo.createMessage({
+    const message = await this._chatRepo.createMessage({
       conversation: conversationId,
       sender: senderId,
       type,
@@ -130,7 +130,7 @@ export default class ChatService implements IChatService {
       replyTo: replyTo ?? null,
     });
 
-    await this.chatRepo.updateLastMessage(conversationId, String(message._id));
+    await this._chatRepo.updateLastMessage(conversationId, String(message._id));
     return message;
   }
 
@@ -139,29 +139,29 @@ export default class ChatService implements IChatService {
     userId: string,
     options: FindMessagesOptions,
   ): Promise<IMessage[]> {
-    const conversation = await this.chatRepo.findConversationById(
+    const conversation = await this._chatRepo.findConversationById(
       conversationId,
       userId,
     );
     if (!conversation)
       throw new AppError("Conversation not found or access denied.", 404);
 
-    const messages = await this.chatRepo.findMessages(conversationId, options);
+    const messages = await this._chatRepo.findMessages(conversationId, options);
     return messages.reverse();
   }
 
   async markAsRead(conversationId: string, userId: string): Promise<void> {
-    const conversation = await this.chatRepo.findConversationById(
+    const conversation = await this._chatRepo.findConversationById(
       conversationId,
       userId,
     );
     if (!conversation) throw new AppError("Conversation not found.", 404);
 
-    await this.chatRepo.markConversationRead(conversationId, userId);
+    await this._chatRepo.markConversationRead(conversationId, userId);
   }
 
   async deleteMessage(messageId: string, userId: string): Promise<IMessage> {
-    const message = await this.chatRepo.findMessageById(messageId);
+    const message = await this._chatRepo.findMessageById(messageId);
     if (!message) throw new AppError("Message not found.", 404);
 
     if (message.sender._id.toString() !== userId) {
@@ -176,13 +176,13 @@ export default class ChatService implements IChatService {
   }
 
   async clearConversation(conversationId: string, userId: string): Promise<void> {
-    const conversation = await this.chatRepo.findConversationById(
+    const conversation = await this._chatRepo.findConversationById(
       conversationId,
       userId,
     );
     if (!conversation)
       throw new AppError("Conversation not found or access denied.", 404);
 
-    await this.chatRepo.clearMessages(conversationId);
+    await this._chatRepo.clearMessages(conversationId);
   }
 }

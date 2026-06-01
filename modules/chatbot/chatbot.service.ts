@@ -34,17 +34,17 @@ const BULK_CONCURRENCY = 5;
 
 @injectable()
 export class ChatBotService implements IChatBotService {
-  private readonly genAI: GoogleGenerativeAI;
+  private readonly _genAI: GoogleGenerativeAI;
 
   constructor(
     @inject(TOKENS.ChatBotRepository)
-    private readonly chatBotRepository: IChatBotRepository,
+    private readonly _chatBotRepository: IChatBotRepository,
   ) {
     if (!process.env.GEMINI_API_KEY) {
       throw new AppError("Gemini API Key is required", 404);
     }
 
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this._genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
 
   async chat(
@@ -52,15 +52,15 @@ export class ChatBotService implements IChatBotService {
     dto: IChatBotRequestDto,
   ): Promise<IChatBotResponseDto> {
     try {
-      const dbHistory = await this.chatBotRepository.getHistory(userId);
+      const dbHistory = await this._chatBotRepository.getHistory(userId);
 
-      const model = this.getModel();
-      const history = this.buildHistory(dbHistory);
+      const model = this._getModel();
+      const history = this._buildHistory(dbHistory);
       const chat = model.startChat({ history });
       const result = await chat.sendMessage(dto.message);
       const reply = result.response.text();
 
-      await this.chatBotRepository.appendMessagePair(
+      await this._chatBotRepository.appendMessagePair(
         userId,
         { role: "user", content: dto.message, createdAt: new Date() },
         { role: "assistant", content: reply, createdAt: new Date() },
@@ -82,10 +82,10 @@ export class ChatBotService implements IChatBotService {
     onError: (err: Error) => void,
   ): Promise<void> {
     try {
-      const dbHistory = await this.chatBotRepository.getHistory(userId);
+      const dbHistory = await this._chatBotRepository.getHistory(userId);
 
-      const model = this.getModel();
-      const history = this.buildHistory(dbHistory);
+      const model = this._getModel();
+      const history = this._buildHistory(dbHistory);
       const chat = model.startChat({ history });
       const result = await chat.sendMessageStream(dto.message);
 
@@ -98,7 +98,7 @@ export class ChatBotService implements IChatBotService {
         }
       }
 
-      await this.chatBotRepository.appendMessagePair(
+      await this._chatBotRepository.appendMessagePair(
         userId,
         { role: "user", content: dto.message, createdAt: new Date() },
         { role: "assistant", content: fullReply, createdAt: new Date() },
@@ -182,15 +182,15 @@ export class ChatBotService implements IChatBotService {
   }
 
   async getHistory(userId: string): Promise<IAIMessage[]> {
-    return this.chatBotRepository.getHistory(userId);
+    return this._chatBotRepository.getHistory(userId);
   }
 
   async clearHistory(userId: string): Promise<void> {
-    await this.chatBotRepository.clearHistory(userId);
+    await this._chatBotRepository.clearHistory(userId);
   }
 
-  private getModel() {
-    return this.genAI.getGenerativeModel({
+  private _getModel() {
+    return this._genAI.getGenerativeModel({
       model: MODEL,
       systemInstruction: SYSTEM_PROMPT,
       safetySettings: [
@@ -210,7 +210,7 @@ export class ChatBotService implements IChatBotService {
     });
   }
 
-  private buildHistory(messages: IAIMessage[]) {
+  private _buildHistory(messages: IAIMessage[]) {
     return messages.slice(-20).map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],

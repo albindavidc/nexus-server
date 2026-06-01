@@ -13,7 +13,7 @@ import { AuthenticatedRequest } from "../../middlewares/auth.middleware";
 export class ChatBotController {
   constructor(
     @inject(TOKENS.ChatBotService)
-    private readonly chatBotService: ChatBotService,
+    private readonly _chatBotService: ChatBotService,
   ) {}
 
   chat = async (
@@ -23,7 +23,7 @@ export class ChatBotController {
   ): Promise<void> => {
     try {
       const { _id } = (req as AuthenticatedRequest).user;
-      const result = await this.chatBotService.chat(
+      const result = await this._chatBotService.chat(
         String(_id),
         req.body as IChatBotRequestDto,
       );
@@ -52,7 +52,7 @@ export class ChatBotController {
         res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       };
 
-      await this.chatBotService.chatStream(
+      await this._chatBotService.chatStream(
         String(_id),
         dto,
         (chunk) => send("chunk", { text: chunk }),
@@ -79,7 +79,7 @@ export class ChatBotController {
   ): Promise<void> => {
     try {
       const { _id } = (req as AuthenticatedRequest).user;
-      const result = await this.chatBotService.bulkChat(
+      const result = await this._chatBotService.bulkChat(
         String(_id),
         req.body as IBulkChatRequestDto,
       );
@@ -96,7 +96,7 @@ export class ChatBotController {
   ): Promise<void> => {
     try {
       const { _id } = (req as AuthenticatedRequest).user;
-      const messages = await this.chatBotService.getHistory(String(_id));
+      const messages = await this._chatBotService.getHistory(String(_id));
       sendSuccess(res, 200, "History fetched.", { messages });
     } catch (error) {
       next(error);
@@ -110,7 +110,7 @@ export class ChatBotController {
   ): Promise<void> => {
     try {
       const { _id } = (req as AuthenticatedRequest).user;
-      await this.chatBotService.clearHistory(String(_id));
+      await this._chatBotService.clearHistory(String(_id));
       sendSuccess(res, 200, "History cleared.");
     } catch (error) {
       next(error);

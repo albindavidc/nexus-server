@@ -16,7 +16,7 @@ interface AuthRequest extends Request {
 export class GroupController {
   constructor(
     @inject(TOKENS.GroupService)
-    private readonly groupService: IGroupService,
+    private readonly _groupService: IGroupService,
   ) {}
 
   getMyGroups = async (
@@ -26,7 +26,7 @@ export class GroupController {
   ): Promise<void> => {
     try {
       const { _id } = (req as AuthRequest).user;
-      const groups = await this.groupService.getMyGroups(_id);
+      const groups = await this._groupService.getMyGroups(_id);
       sendSuccess(res, 200, "Groups fetched successfully", { groups });
     } catch (err) {
       next(err);
@@ -41,7 +41,7 @@ export class GroupController {
     try {
       const { _id } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
-      const group = await this.groupService.getGroup(groupId, _id);
+      const group = await this._groupService.getGroup(groupId, _id);
       sendSuccess(res, 200, "Group fetched successfully", { group });
     } catch (err) {
       next(err);
@@ -55,7 +55,7 @@ export class GroupController {
   ): Promise<void> => {
     try {
       const { _id, userName } = (req as AuthRequest).user;
-      const group = await this.groupService.createGroup(_id, req.body);
+      const group = await this._groupService.createGroup(_id, req.body);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -82,7 +82,7 @@ export class GroupController {
     try {
       const { _id, userName } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
-      const group = await this.groupService.updateGroup(groupId, _id, req.body);
+      const group = await this._groupService.updateGroup(groupId, _id, req.body);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -108,8 +108,8 @@ export class GroupController {
       const { _id, userName } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
 
-      const group = await this.groupService.getGroup(groupId, _id);
-      await this.groupService.deleteGroup(groupId, _id);
+      const group = await this._groupService.getGroup(groupId, _id);
+      await this._groupService.deleteGroup(groupId, _id);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -139,7 +139,7 @@ export class GroupController {
       const groupId = req.params["groupId"] as string;
       const { userIds } = req.body as { userIds: string[] };
 
-      const group = await this.groupService.addMembers(groupId, _id, userIds);
+      const group = await this._groupService.addMembers(groupId, _id, userIds);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -170,7 +170,7 @@ export class GroupController {
       const groupId = req.params["groupId"] as string;
       const userId = req.params["userId"] as string;
 
-      const group = await this.groupService.removeMember(groupId, _id, userId);
+      const group = await this._groupService.removeMember(groupId, _id, userId);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -198,7 +198,7 @@ export class GroupController {
       const { _id, userName } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
 
-      await this.groupService.leaveGroup(groupId, _id);
+      await this._groupService.leaveGroup(groupId, _id);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -225,7 +225,7 @@ export class GroupController {
       const groupId = req.params["groupId"] as string;
       const userId = req.params["userId"] as string;
 
-      const group = await this.groupService.promoteMember(groupId, _id, userId);
+      const group = await this._groupService.promoteMember(groupId, _id, userId);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -253,7 +253,7 @@ export class GroupController {
       const groupId = req.params["groupId"] as string;
       const userId = req.params["userId"] as string;
 
-      const group = await this.groupService.demoteMember(groupId, _id, userId);
+      const group = await this._groupService.demoteMember(groupId, _id, userId);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -281,7 +281,7 @@ export class GroupController {
       const groupId = req.params["groupId"] as string;
       const { newOwnerId } = req.body as { newOwnerId: string };
 
-      const group = await this.groupService.transferOwnership(
+      const group = await this._groupService.transferOwnership(
         groupId,
         _id,
         newOwnerId,
@@ -315,7 +315,7 @@ export class GroupController {
         return sendSuccess(res, 200, "Groups fetched successfully", { groups: [] });
       }
 
-      const groups = await this.groupService.searchGroups(query);
+      const groups = await this._groupService.searchGroups(query);
       sendSuccess(res, 200, "Groups fetched successfully", { groups });
     } catch (err) {
       next(err);
@@ -331,7 +331,7 @@ export class GroupController {
       const { _id, userName } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
 
-      const group = await this.groupService.joinGroup(groupId, _id);
+      const group = await this._groupService.joinGroup(groupId, _id);
 
       const io: Server = req.app.get("io");
       if (io) {
@@ -358,7 +358,7 @@ export class GroupController {
     try {
       const { _id } = (req as AuthRequest).user;
       const groupId = req.params["groupId"] as string;
-      const messages = await this.groupService.getGroupMessages(groupId, _id.toString());
+      const messages = await this._groupService.getGroupMessages(groupId, _id.toString());
       sendSuccess(res, 200, "Group messages fetched successfully", { messages });
     } catch (err) {
       next(err);
@@ -380,7 +380,7 @@ export class GroupController {
         return;
       }
 
-      const message = await this.groupService.sendGroupMessage(groupId, _id.toString(), content);
+      const message = await this._groupService.sendGroupMessage(groupId, _id.toString(), content);
 
       const io: Server = req.app.get("io");
       if (io) {

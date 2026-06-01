@@ -22,11 +22,11 @@ interface BotMessagePayload {
 }
 
 export class ChatBotGateway {
-  private io!: Server;
+  private _io!: Server;
 
   constructor(
     @inject(TOKENS.ChatBotService)
-    private readonly chatBotService: ChatBotService,
+    private readonly _chatBotService: ChatBotService,
   ) {}
 
   initialize(httpServer: http.Server, clientUrl: string): void {
@@ -43,7 +43,7 @@ export class ChatBotGateway {
     const authMiddleware = container.resolve(AuthMiddleware);
     io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
 
-    this.io.on("connect", (socket: Socket) => {
+    this._io.on("connect", (socket: Socket) => {
       this.handleConnection(socket as AuthSocket);
     });
   }
@@ -89,13 +89,13 @@ export class ChatBotGateway {
     this.emitTyping(conversationId, true);
     let fullReplay = "";
 
-    await this.chatBotService.chatStream(
+    await this._chatBotService.chatStream(
       userId,
       { message: message.trim(), history },
 
       (chunk: string) => {
         fullReplay += chunk;
-        this.io.to(conversationId).emit(SOCKET_EVENTS.BOT_CHUNK, {
+        this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_CHUNK, {
           conversationId,
           chunk,
         });
@@ -103,7 +103,7 @@ export class ChatBotGateway {
 
       () => {
         this.emitTyping(conversationId, false);
-        this.io.to(conversationId).emit(SOCKET_EVENTS.BOT_DONE, {
+        this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_DONE, {
           conversationId,
           fullReplay,
         });
@@ -114,7 +114,7 @@ export class ChatBotGateway {
 
       (err: Error) => {
         this.emitTyping(conversationId, false);
-        this.io.to(conversationId).emit(SOCKET_EVENTS.BOT_ERROR, {
+        this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_ERROR, {
           conversationId,
           message: err.message,
         });
@@ -124,7 +124,7 @@ export class ChatBotGateway {
   }
 
   private emitTyping(conversationId: string, isTyping: boolean): void {
-    this.io.to(conversationId).emit(SOCKET_EVENTS.BOT_TYPING, {
+    this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_TYPING, {
       conversationId,
       userId: BOT_USER_ID,
       username: BOT_USER_NAME,

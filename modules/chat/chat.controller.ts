@@ -10,8 +10,8 @@ import { ChatGateway } from "./chat.gateway";
 @injectable()
 export default class ChatController {
   constructor(
-    @inject(TOKENS.ChatService) private chatService: IChatService,
-    private chatGateway: ChatGateway,
+    @inject(TOKENS.ChatService) private _chatService: IChatService,
+    private _chatGateway: ChatGateway,
   ) {}
 
   getMyConversations = async (
@@ -20,7 +20,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const conversations = await this.chatService.getMyConversations(
+      const conversations = await this._chatService.getMyConversations(
         String(req.user._id),
       );
       ResponseHelper.success(res, 200, "Conversations fetched.", {
@@ -37,7 +37,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const conversation = await this.chatService.getConversationById(
+      const conversation = await this._chatService.getConversationById(
         String(req.params.conversationId),
         String(req.user._id),
       );
@@ -55,7 +55,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const conversation = await this.chatService.getOrCreateDirectConversation(
+      const conversation = await this._chatService.getOrCreateDirectConversation(
         String(req.user._id),
         String(req.params.userId),
       );
@@ -73,7 +73,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const conversation = await this.chatService.createGroupConversation(
+      const conversation = await this._chatService.createGroupConversation(
         String(req.user._id),
         req.body,
       );
@@ -96,7 +96,7 @@ export default class ChatController {
         before: before as string | undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
       };
-      const messages = await this.chatService.getMessages(
+      const messages = await this._chatService.getMessages(
         String(req.params.conversationId),
         String(req.user._id),
         options,
@@ -113,12 +113,12 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const message = await this.chatService.sendMessage(
+      const message = await this._chatService.sendMessage(
         String(req.user._id),
         String(req.params.conversationId),
         req.body,
       );
-      this.chatGateway.broadcastToConversation(
+      this._chatGateway.broadcastToConversation(
         String(req.params.conversationId),
         "new_message",
         message,
@@ -135,7 +135,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      await this.chatService.markAsRead(
+      await this._chatService.markAsRead(
         String(req.params.conversationId),
         String(req.user._id),
       );
@@ -151,7 +151,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      await this.chatService.deleteMessage(
+      await this._chatService.deleteMessage(
         String(req.params.messageId),
         String(req.user._id),
       );
@@ -167,7 +167,7 @@ export default class ChatController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      await this.chatService.clearConversation(
+      await this._chatService.clearConversation(
         String(req.params.conversationId),
         String(req.user._id),
       );
