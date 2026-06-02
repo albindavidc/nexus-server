@@ -118,11 +118,31 @@ export default class ChatController {
         String(req.params.conversationId),
         req.body,
       );
+
+      const conversation = await this._chatService.getConversationById(
+        String(req.params.conversationId),
+        String(req.user._id),
+      );
+
       this._chatGateway.broadcastToConversation(
         String(req.params.conversationId),
         "new_message",
         message,
       );
+
+      if (conversation && conversation.participants) {
+        conversation.participants.forEach((p: any) => {
+          const participantId = (p._id || p).toString();
+          if (participantId !== String(req.user._id)) {
+            this._chatGateway.broadcastToConversation(
+              participantId,
+              "new_message",
+              message,
+            );
+          }
+        });
+      }
+
       ResponseHelper.success(res, 201, "Message sent.", { message });
     } catch (err) {
       next(err);

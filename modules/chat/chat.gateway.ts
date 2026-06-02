@@ -246,6 +246,19 @@ export class ChatGateway {
       });
 
       this._io.to(conversationId).emit(SOCKET_EVENTS.NEW_MESSAGE, message);
+
+      const conversation = await this._chatRepo.findConversationById(
+        conversationId,
+        socket.userId as string,
+      );
+      if (conversation && conversation.participants) {
+        conversation.participants.forEach((p) => {
+          const participantId = p.toString();
+          if (participantId !== socket.userId) {
+            this._io.to(participantId).emit(SOCKET_EVENTS.NEW_MESSAGE, message);
+          }
+        });
+      }
     } catch (error) {
       logger.error(`handleSendMessage failed for ${socket.userId}:`, error);
       this.emitError(socket, "Failed to send message");
