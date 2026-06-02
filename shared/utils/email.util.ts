@@ -68,6 +68,13 @@ export async function sendOtpEmail(email: string, otp: string): Promise<void> {
   `;
 
   try {
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      logger.warn(
+        `SMTP credentials missing. Bypassing email sending. OTP is: ${otp}`,
+      );
+      return;
+    }
+
     await transporter.sendMail({
       from: `"Nexus Fitness" <${process.env.SMTP_USER}>`,
       to: email,

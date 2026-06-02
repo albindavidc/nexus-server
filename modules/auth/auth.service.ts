@@ -82,7 +82,9 @@ export default class AuthService implements IAuthService {
     }
 
     const accessToken = this._jwtService.generateAccessToken(String(user._id));
-    const refreshToken = this._jwtService.generateRefreshToken(String(user._id));
+    const refreshToken = this._jwtService.generateRefreshToken(
+      String(user._id),
+    );
 
     user.refreshToken = refreshToken;
     await this._authRepo.saveUser(user);
@@ -98,6 +100,8 @@ export default class AuthService implements IAuthService {
     await Otp.deleteMany({ email });
 
     await Otp.create({ email, otp });
+
+    console.log(`this is the otp ${otp}`);
 
     await sendOtpEmail(email, otp);
   }
@@ -138,7 +142,9 @@ export default class AuthService implements IAuthService {
     await this._authRepo.saveUser(user);
 
     const accessToken = this._jwtService.generateAccessToken(String(user._id));
-    const refreshToken = this._jwtService.generateRefreshToken(String(user._id));
+    const refreshToken = this._jwtService.generateRefreshToken(
+      String(user._id),
+    );
 
     user.refreshToken = refreshToken;
     await this._authRepo.saveUser(user);
