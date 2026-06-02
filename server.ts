@@ -1,7 +1,13 @@
 import "reflect-metadata";
 import path from "path";
 import dotenv from "dotenv";
-dotenv.config({ path: path.resolve(__dirname, "./config/.env") });
+
+const envPath = path.resolve(__dirname, "./config/.env");
+const envResult = dotenv.config({ path: envPath });
+if (envResult.error) {
+  const fallbackPath = path.resolve(__dirname, "../config/.env");
+  dotenv.config({ path: fallbackPath });
+}
 
 import { registerDependencies } from "./shared/di/container";
 registerDependencies();
