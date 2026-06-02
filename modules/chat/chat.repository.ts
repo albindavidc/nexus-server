@@ -37,9 +37,12 @@ export default class ChatRepository implements IChatRepository {
       _id: conversationId,
       $or: [
         { type: CONVERSATION_TYPE.GROUP, "members.user": userId },
-        { type: { $in: [CONVERSATION_TYPE.DIRECT, CONVERSATION_TYPE.AI] }, participants: userId }
+        {
+          type: { $in: [CONVERSATION_TYPE.DIRECT, CONVERSATION_TYPE.AI] },
+          participants: userId,
+        },
       ],
-      isDeleted: false
+      isDeleted: false,
     })
       .populate("participants", "username avatar status lastSeen")
       .populate("members.user", "username avatar status lastSeen")
@@ -164,7 +167,7 @@ export default class ChatRepository implements IChatRepository {
   async clearMessages(conversationId: string): Promise<void> {
     await Message.updateMany(
       { conversation: conversationId },
-      { $set: { isDeleted: true, deletedAt: new Date() } }
+      { $set: { isDeleted: true, deletedAt: new Date() } },
     );
   }
 }

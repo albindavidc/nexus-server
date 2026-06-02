@@ -1,14 +1,11 @@
-import { Server, Socket } from "socket.io";
-import { container } from "tsyringe";
+import { Server } from "socket.io";
+import { injectable, inject } from "tsyringe";
 import { TOKENS } from "../../shared/di/tokens";
 import { IGroupService } from "../../shared/interfaces/services/group-service.interface";
 import { SOCKET_EVENTS, GROUP_ROLES } from "../../shared/constants";
 import logger from "../../shared/utils/logger";
 import { Types } from "mongoose";
-
-interface AuthSocket extends Socket {
-  user: { _id: Types.ObjectId; userName: string };
-}
+import { CustomSocket } from "../../middlewares/auth.middleware";
 
 interface CreateGroupPayload {
   name: string;
@@ -48,266 +45,347 @@ interface LeaveGroupPayload {
   groupId: string;
 }
 
-const emitError = (socket: AuthSocket, message: string): void => {
-  socket.emit(SOCKET_EVENTS.SOCKET_ERROR, { message });
-};
+type AckCallback = (response: Record<string, unknown>) => void;
 
-export const registerGroupHandlers = (socket: AuthSocket, io: Server): void => {
-  const groupService = container.resolve<IGroupService>(
-    TOKENS.GroupService as unknown as new () => IGroupService,
-  );
+@injectable()
+export class GroupGateway {
+  constructor(
+    @inject(TOKENS.GroupService)
+    private readonly _groupService: IGroupService,
+  ) {}
 
-  socket.on("group:create", async (payload: CreateGroupPayload) => {
-    try {
-      const { name, description, participantIds, avatarUrl } = payload;
-      if (!name?.trim()) return emitError(socket, "Group name is required.");
-      if (!Array.isArray(participantIds) || participantIds.length === 0)
-        return emitError(socket, "At least one participant is required.");
+  public registerHandlers(socket: CustomSocket, io: Server): void {
+    if (!socket.user || !socket.userId) return;
+    
+    const user = { _id: socket.user._id as Types.ObjectId, username: socket.user.username };
+    
+    const emitError = (message: string, callback?: AckCallback): void => {
+      if (typeof callback === "function") {
+        callback({ success: false, error: message });
+      } else {
+        socket.emit(SOCKET_EVENTS.SOCKET_ERROR, { message });
+      }
+    };
 
-      const group = await groupService.createGroup(socket.user._id, {
-        name,
-        description,
-        participantIds,
-        avatarUrl,
-      });
+    socket.on(SOCKET_EVENTS.GROUP_GET_MY_GROUPS, async (payload: Record<string, unknown>, callback?: AckCallback) => {
+      try {
+        const groups = await this._groupService.getMyGroups(user._id);
+        if (typeof callback === "function") callback({ success: true, data: { groups } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to fetch groups.";
+        logger.error(`GROUP_GET_MY_GROUPS error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-      socket.join((group._id as Types.ObjectId).toString());
+    socket.on(SOCKET_EVENTS.GROUP_GET_BY_ID, async (payload: { groupId: string }, callback?: AckCallback) => {
+      try {
+        if (!payload?.groupId) return emitError("groupId is required.", callback);
+        const group = await this._groupService.getGroup(payload.groupId, user._id);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to fetch group.";
+        logger.error(`GROUP_GET_BY_ID error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-      group.members.forEach((m) => {
-        io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_CREATED, {
+    socket.on(SOCKET_EVENTS.GROUP_SEARCH, async (payload: { q: string }, callback?: AckCallback) => {
+      try {
+        if (!payload?.q) {
+          if (typeof callback === "function") callback({ success: true, data: { groups: [] } });
+          return;
+        }
+        const groups = await this._groupService.searchGroups(payload.q);
+        if (typeof callback === "function") callback({ success: true, data: { groups } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to search groups.";
+        logger.error(`GROUP_SEARCH error: ${message}`);
+        emitError(message, callback);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.GROUP_GET_MESSAGES, async (payload: { groupId: string }, callback?: AckCallback) => {
+      try {
+        if (!payload?.groupId) return emitError("groupId is required.", callback);
+        const messages = await this._groupService.getGroupMessages(payload.groupId, user._id.toString());
+        if (typeof callback === "function") callback({ success: true, data: { messages } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to fetch group messages.";
+        logger.error(`GROUP_GET_MESSAGES error: ${message}`);
+        emitError(message, callback);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.GROUP_JOIN, async (payload: { groupId: string }, callback?: AckCallback) => {
+      try {
+        if (!payload?.groupId) return emitError("groupId is required.", callback);
+        const group = await this._groupService.joinGroup(payload.groupId, user._id);
+
+        io.to(payload.groupId).emit(SOCKET_EVENTS.MEMBER_ADDED, {
+          groupId: payload.groupId,
+          addedUserIds: [user._id.toString()],
+          actorId: user._id.toString(),
+          actorUserName: user.username,
+        });
+        io.to(user._id.toString()).emit(SOCKET_EVENTS.GROUP_CREATED, { group });
+
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to join group.";
+        logger.error(`GROUP_JOIN error: ${message}`);
+        emitError(message, callback);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.GROUP_SEND_MESSAGE, async (payload: { groupId: string; content: string }, callback?: AckCallback) => {
+      try {
+        const { groupId, content } = payload;
+        if (!groupId) return emitError("groupId is required.", callback);
+        if (!content || !content.trim()) return emitError("Content cannot be empty.", callback);
+
+        const message = await this._groupService.sendGroupMessage(groupId, user._id.toString(), content);
+        io.to(groupId).emit(SOCKET_EVENTS.GROUP_NEW_MESSAGE, message);
+
+        if (typeof callback === "function") callback({ success: true, data: { message } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to send group message.";
+        logger.error(`GROUP_SEND_MESSAGE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.GROUP_CREATE, async (payload: CreateGroupPayload, callback?: AckCallback) => {
+      try {
+        const { name, description, participantIds, avatarUrl } = payload;
+        if (!name?.trim()) return emitError("Group name is required.", callback);
+        if (!Array.isArray(participantIds) || participantIds.length === 0)
+          return emitError("At least one participant is required.", callback);
+
+        const group = await this._groupService.createGroup(user._id, {
+          name,
+          description,
+          participantIds,
+          avatarUrl,
+        });
+
+        socket.join((group._id as Types.ObjectId).toString());
+
+        group.members.forEach((m) => {
+          io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_CREATED, {
+            group,
+            actorId: user._id.toString(),
+            actorUserName: user.username,
+          });
+        });
+
+        logger.debug(`Group created: "${name}" by ${user.username}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to create group.";
+        logger.error(`GROUP_CREATE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.GROUP_UPDATE, async (payload: UpdateGroupPayload, callback?: AckCallback) => {
+      try {
+        const { groupId, ...dto } = payload;
+        if (!groupId) return emitError("groupId is required.", callback);
+
+        const group = await this._groupService.updateGroup(groupId, user._id, dto);
+
+        io.to(groupId).emit(SOCKET_EVENTS.GROUP_UPDATED, {
           group,
-          actorId: socket.user._id,
-          actorUserName: socket.user.userName,
+          actorId: user._id.toString(),
+          actorUserName: user.username,
         });
-      });
 
-      logger.debug(`Group created: "${name}" by ${socket.user.userName}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create group.";
-      logger.error(`group:create error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+        logger.debug(`Group updated: ${groupId} by ${user.username}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to update group.";
+        logger.error(`GROUP_UPDATE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-  socket.on("group:update", async (payload: UpdateGroupPayload) => {
-    try {
-      const { groupId, ...dto } = payload;
-      if (!groupId) return emitError(socket, "groupId is required.");
+    socket.on(SOCKET_EVENTS.GROUP_DELETE, async (payload: { groupId: string }, callback?: AckCallback) => {
+      try {
+        if (!payload?.groupId) return emitError("groupId is required.", callback);
 
-      const group = await groupService.updateGroup(
-        groupId,
-        socket.user._id,
-        dto,
-      );
+        const group = await this._groupService.getGroup(payload.groupId, user._id);
+        await this._groupService.deleteGroup(payload.groupId, user._id);
 
-      io.to(groupId).emit(SOCKET_EVENTS.GROUP_UPDATED, {
-        group,
-        actorId: socket.user._id,
-        actorUserName: socket.user.userName,
-      });
+        group.members.forEach((m) => {
+          io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_DELETED, {
+            groupId: payload.groupId,
+            actorId: user._id.toString(),
+            actorUserName: user.username,
+          });
+        });
 
-      logger.debug(`Group updated: ${groupId} by ${socket.user.userName}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update group.";
-      logger.error(`group:update error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+        io.in(payload.groupId).socketsLeave(payload.groupId);
 
-  socket.on("group:delete", async ({ groupId }: { groupId: string }) => {
-    try {
-      if (!groupId) return emitError(socket, "groupId is required.");
+        logger.debug(`Group deleted: ${payload.groupId} by ${user.username}`);
+        if (typeof callback === "function") callback({ success: true, data: { message: "Group deleted successfully" } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to delete group.";
+        logger.error(`GROUP_DELETE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-      const group = await groupService.getGroup(groupId, socket.user._id);
-      await groupService.deleteGroup(groupId, socket.user._id);
+    socket.on(SOCKET_EVENTS.GROUP_ADD_MEMBERS, async (payload: AddMembersPayload, callback?: AckCallback) => {
+      try {
+        const { groupId, userIds } = payload;
+        if (!groupId) return emitError("groupId is required.", callback);
+        if (!Array.isArray(userIds) || userIds.length === 0)
+          return emitError("At least one userId is required.", callback);
 
-      group.members.forEach((m) => {
-        io.to(m.user.toString()).emit(SOCKET_EVENTS.GROUP_DELETED, {
+        const group = await this._groupService.addMembers(groupId, user._id, userIds);
+
+        io.to(groupId).emit(SOCKET_EVENTS.MEMBER_ADDED, {
           groupId,
-          actorId: socket.user._id,
-          actorUserName: socket.user.userName,
+          addedUserIds: userIds,
+          actorId: user._id.toString(),
+          actorUserName: user.username,
         });
-      });
 
-      io.in(groupId).socketsLeave(groupId);
+        userIds.forEach((uid) => {
+          io.to(uid).emit(SOCKET_EVENTS.GROUP_CREATED, { group });
+        });
 
-      logger.debug(`Group deleted: ${groupId} by ${socket.user.userName}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to delete group.";
-      logger.error(`group:delete error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+        logger.debug(`Members added to ${groupId}: ${userIds.join(", ")}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to add members.";
+        logger.error(`GROUP_ADD_MEMBERS error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-  socket.on("group:add_members", async (payload: AddMembersPayload) => {
-    try {
-      const { groupId, userIds } = payload;
-      if (!groupId) return emitError(socket, "groupId is required.");
-      if (!Array.isArray(userIds) || userIds.length === 0)
-        return emitError(socket, "At least one userId is required.");
+    socket.on(SOCKET_EVENTS.GROUP_REMOVE_MEMBER, async (payload: RemoveMemberPayload, callback?: AckCallback) => {
+      try {
+        const { groupId, targetUserId } = payload;
+        if (!groupId || !targetUserId) return emitError("groupId and targetUserId are required.", callback);
 
-      const group = await groupService.addMembers(
-        groupId,
-        socket.user._id,
-        userIds,
-      );
+        const group = await this._groupService.removeMember(groupId, user._id, targetUserId);
 
-      io.to(groupId).emit(SOCKET_EVENTS.MEMBER_ADDED, {
-        groupId,
-        addedUserIds: userIds,
-        actorId: socket.user._id,
-        actorUserName: socket.user.userName,
-      });
+        io.to(groupId).emit(SOCKET_EVENTS.MEMBER_REMOVED, {
+          groupId,
+          targetUserId,
+          actorId: user._id.toString(),
+          actorUserName: user.username,
+        });
 
-      userIds.forEach((uid) => {
-        io.to(uid).emit(SOCKET_EVENTS.GROUP_CREATED, { group });
-      });
+        io.in(targetUserId).socketsLeave(groupId);
 
-      logger.debug(`Members added to ${groupId}: ${userIds.join(", ")}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to add members.";
-      logger.error(`group:add_members error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+        logger.debug(`Member ${targetUserId} removed from ${groupId} by ${user.username}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to remove member.";
+        logger.error(`GROUP_REMOVE_MEMBER error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-  socket.on("group:remove_member", async (payload: RemoveMemberPayload) => {
-    try {
-      const { groupId, targetUserId } = payload;
-      if (!groupId || !targetUserId)
-        return emitError(socket, "groupId and targetUserId are required.");
+    socket.on(SOCKET_EVENTS.GROUP_LEAVE, async (payload: LeaveGroupPayload, callback?: AckCallback) => {
+      try {
+        const { groupId } = payload;
+        if (!groupId) return emitError("groupId is required.", callback);
 
-      await groupService.removeMember(groupId, socket.user._id, targetUserId);
+        await this._groupService.leaveGroup(groupId, user._id);
 
-      io.to(groupId).emit(SOCKET_EVENTS.MEMBER_REMOVED, {
-        groupId,
-        targetUserId,
-        actorId: socket.user._id,
-        actorUserName: socket.user.userName,
-      });
+        socket.to(groupId).emit(SOCKET_EVENTS.MEMBER_LEFT, {
+          groupId,
+          userId: user._id.toString(),
+          userName: user.username,
+        });
 
-      io.in(targetUserId).socketsLeave(groupId);
+        socket.leave(groupId);
 
-      logger.debug(
-        `Member ${targetUserId} removed from ${groupId} by ${socket.user.userName}`,
-      );
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to remove member.";
-      logger.error(`group:remove_member error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+        logger.debug(`${user.username} left group ${groupId}`);
+        if (typeof callback === "function") callback({ success: true, data: { message: "Left group successfully" } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to leave group.";
+        logger.error(`GROUP_LEAVE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-  socket.on("group:leave", async (payload: LeaveGroupPayload) => {
-    try {
-      const { groupId } = payload;
-      if (!groupId) return emitError(socket, "groupId is required.");
+    socket.on(SOCKET_EVENTS.GROUP_PROMOTE, async (payload: PromoteDemotePayload, callback?: AckCallback) => {
+      try {
+        const { groupId, targetUserId } = payload;
+        if (!groupId || !targetUserId) return emitError("groupId and targetUserId are required.", callback);
 
-      await groupService.leaveGroup(groupId, socket.user._id);
+        const group = await this._groupService.promoteMember(groupId, user._id, targetUserId);
 
-      socket.to(groupId).emit(SOCKET_EVENTS.MEMBER_LEFT, {
-        groupId,
-        userId: socket.user._id,
-        userName: socket.user.userName,
-      });
+        io.to(groupId).emit(SOCKET_EVENTS.MEMBER_PROMOTED, {
+          groupId,
+          targetUserId,
+          newRole: GROUP_ROLES.ADMIN,
+          actorId: user._id.toString(),
+          actorUserName: user.username,
+        });
 
-      socket.leave(groupId);
+        logger.debug(`Member ${targetUserId} promoted in ${groupId}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to promote member.";
+        logger.error(`GROUP_PROMOTE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-      logger.debug(`${socket.user.userName} left group ${groupId}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to leave group.";
-      logger.error(`group:leave error: ${message}`);
-      emitError(socket, message);
-    }
-  });
+    socket.on(SOCKET_EVENTS.GROUP_DEMOTE, async (payload: PromoteDemotePayload, callback?: AckCallback) => {
+      try {
+        const { groupId, targetUserId } = payload;
+        if (!groupId || !targetUserId) return emitError("groupId and targetUserId are required.", callback);
 
-  socket.on("group:promote", async (payload: PromoteDemotePayload) => {
-    try {
-      const { groupId, targetUserId } = payload;
-      if (!groupId || !targetUserId)
-        return emitError(socket, "groupId and targetUserId are required.");
+        const group = await this._groupService.demoteMember(groupId, user._id, targetUserId);
 
-      await groupService.promoteMember(groupId, socket.user._id, targetUserId);
+        io.to(groupId).emit(SOCKET_EVENTS.MEMBER_DEMOTED, {
+          groupId,
+          targetUserId,
+          newRole: GROUP_ROLES.MEMBER,
+          actorId: user._id.toString(),
+          actorUserName: user.username,
+        });
 
-      io.to(groupId).emit(SOCKET_EVENTS.MEMBER_PROMOTED, {
-        groupId,
-        targetUserId,
-        newRole: GROUP_ROLES.ADMIN,
-        actorId: socket.user._id,
-        actorUserName: socket.user.userName,
-      });
+        logger.debug(`Member ${targetUserId} demoted in ${groupId}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to demote member.";
+        logger.error(`GROUP_DEMOTE error: ${message}`);
+        emitError(message, callback);
+      }
+    });
 
-      logger.debug(`Member ${targetUserId} promoted in ${groupId}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to promote member.";
-      logger.error(`group:promote error: ${message}`);
-      emitError(socket, message);
-    }
-  });
-
-  socket.on("group:demote", async (payload: PromoteDemotePayload) => {
-    try {
-      const { groupId, targetUserId } = payload;
-      if (!groupId || !targetUserId)
-        return emitError(socket, "groupId and targetUserId are required.");
-
-      await groupService.demoteMember(groupId, socket.user._id, targetUserId);
-
-      io.to(groupId).emit(SOCKET_EVENTS.MEMBER_DEMOTED, {
-        groupId,
-        targetUserId,
-        newRole: GROUP_ROLES.MEMBER,
-        actorId: socket.user._id,
-        actorUserName: socket.user.userName,
-      });
-
-      logger.debug(`Member ${targetUserId} demoted in ${groupId}`);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to demote member.";
-      logger.error(`group:demote error: ${message}`);
-      emitError(socket, message);
-    }
-  });
-
-  socket.on(
-    "group:transfer_ownership",
-    async (payload: TransferOwnershipPayload) => {
+    socket.on(SOCKET_EVENTS.GROUP_TRANSFER_OWNERSHIP, async (payload: TransferOwnershipPayload, callback?: AckCallback) => {
       try {
         const { groupId, newOwnerId } = payload;
-        if (!groupId || !newOwnerId)
-          return emitError(socket, "groupId and newOwnerId are required.");
+        if (!groupId || !newOwnerId) return emitError("groupId and newOwnerId are required.", callback);
 
-        await groupService.transferOwnership(
-          groupId,
-          socket.user._id,
-          newOwnerId,
-        );
+        const group = await this._groupService.transferOwnership(groupId, user._id, newOwnerId);
 
         io.to(groupId).emit(SOCKET_EVENTS.MEMBER_PROMOTED, {
           groupId,
           targetUserId: newOwnerId,
           newRole: GROUP_ROLES.ADMIN,
-          previousOwnerId: socket.user._id,
-          actorId: socket.user._id,
-          actorUserName: socket.user.userName,
+          previousOwnerId: user._id.toString(),
+          actorId: user._id.toString(),
+          actorUserName: user.username,
           isOwnerTransfer: true,
         });
 
         logger.debug(`Ownership of ${groupId} transferred to ${newOwnerId}`);
+        if (typeof callback === "function") callback({ success: true, data: { group } });
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Failed to transfer ownership.";
-        logger.error(`group:transfer_ownership error: ${message}`);
-        emitError(socket, message);
+        const message = err instanceof Error ? err.message : "Failed to transfer ownership.";
+        logger.error(`GROUP_TRANSFER_OWNERSHIP error: ${message}`);
+        emitError(message, callback);
       }
-    },
-  );
-};
+    });
+  }
+}
