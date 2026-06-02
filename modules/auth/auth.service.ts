@@ -1,5 +1,6 @@
 import { injectable, inject } from "tsyringe";
 import { Response, Request } from "express";
+import crypto from "crypto";
 import {
   IAuthService,
   RegisterUserDto,
@@ -7,8 +8,10 @@ import {
 } from "../../shared/interfaces/services/auth-service.interface";
 import { IAuthRepository } from "../../shared/interfaces/repository/auth-repository.interface";
 import { IUser } from "./auth.model";
+import Otp from "./otp.model";
 import jwt from "jsonwebtoken";
 import { JwtService } from "../../shared/utils/jwt.util";
+import { sendOtpEmail } from "../../shared/utils/email.util";
 import { TOKENS } from "../../shared/di/tokens";
 
 @injectable()
@@ -43,13 +46,7 @@ export default class AuthService implements IAuthService {
       password,
     });
 
-    const accessToken = this._jwtService.generateAccessToken(String(user._id));
-    const refreshToken = this._jwtService.generateRefreshToken(String(user._id));
-
-    user.refreshToken = refreshToken;
-    await this._authRepo.saveUser(user);
-
-    this._jwtService.setCookies(res, accessToken, refreshToken);
+    await this.sendOtp(email);
 
     return user;
   }
@@ -74,6 +71,71 @@ export default class AuthService implements IAuthService {
         message: "Invalid credentials",
       });
     }
+
+    if (!user.isVerified) {
+      await this.sendOtp(email);
+      return res.status(403).json({
+        success: false,
+        message: "Email not verified. A new OTP has been sent to your email.",
+        data: { requiresVerification: true, email },
+      });
+    }
+
+    const accessToken = this._jwtService.generateAccessToken(String(user._id));
+    const refreshToken = this._jwtService.generateRefreshToken(String(user._id));
+
+    user.refreshToken = refreshToken;
+    await this._authRepo.saveUser(user);
+
+    this._jwtService.setCookies(res, accessToken, refreshToken);
+
+    return user;
+  }
+
+  async sendOtp(email: string): Promise<void> {
+    const otp = crypto.randomInt(100000, 999999).toString();
+
+    await Otp.deleteMany({ email });
+
+    await Otp.create({ email, otp });
+
+    await sendOtpEmail(email, otp);
+  }
+
+  async verifyOtp(
+    res: Response,
+    email: string,
+    otp: string,
+  ): Promise<IUser | Response> {
+    const otpRecord = await Otp.findOne({ email }).sort({ createdAt: -1 });
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one.",
+      });
+    }
+
+    const isValid = await otpRecord.compareOtp(otp);
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP. Please try again.",
+      });
+    }
+
+    await Otp.deleteMany({ email });
+
+    const user = await this._authRepo.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.isVerified = true;
+    await this._authRepo.saveUser(user);
 
     const accessToken = this._jwtService.generateAccessToken(String(user._id));
     const refreshToken = this._jwtService.generateRefreshToken(String(user._id));

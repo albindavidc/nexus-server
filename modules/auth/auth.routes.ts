@@ -12,6 +12,9 @@ router.post("/register", AuthValidator.registerRules, authCtrl.register);
 router.post("/login", AuthValidator.loginRules, authCtrl.login);
 router.post("/refresh-token", authCtrl.refreshToken);
 
+router.post("/send-otp", AuthValidator.resendOtpRules, authCtrl.sendOtp);
+router.post("/verify-otp", AuthValidator.verifyOtpRules, authCtrl.verifyOtp);
+
 router.post("/logout", authMiddleware.protect, authCtrl.logout);
 router.get("/user", authMiddleware.protect, authCtrl.getUser);
 router.get("/users/search", authMiddleware.protect, authCtrl.searchUsers);

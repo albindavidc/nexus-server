@@ -22,6 +22,10 @@ export default class AuthRepository implements IAuthRepository {
     return User.findById(userId);
   }
 
+  async findByEmail(email: string): Promise<IUser | null> {
+    return User.findOne({ email });
+  }
+
   async createUser(data: RegisterUserDto): Promise<IUser> {
     return User.create(data);
   }

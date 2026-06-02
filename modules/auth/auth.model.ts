@@ -9,6 +9,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   avatar: string;
+  isVerified: boolean;
   status: string;
   socketIds: string[];
   lastSeen: Date;
@@ -60,6 +61,10 @@ const userSchema = new mongoose.Schema(
     avatar: {
       type: String,
       default: "",
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
     status: {
       type: String,

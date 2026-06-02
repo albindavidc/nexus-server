@@ -33,8 +33,9 @@ export default class AuthController {
 
       if (!user) return;
 
-      ResponseHelper.success(res, 201, "User registered successfully", {
+      ResponseHelper.success(res, 201, "User registered successfully. Please verify your email.", {
         user,
+        requiresVerification: true,
       });
     } catch (error) {
       next(error);
@@ -58,6 +59,48 @@ export default class AuthController {
       if (!user) return;
 
       ResponseHelper.success(res, 200, "User logged in successfully", { user });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  sendOtp = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      const { email } = req.body;
+      await this._authService.sendOtp(email);
+
+      ResponseHelper.success(res, 200, "OTP sent successfully");
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyOtp = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void | Response> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      const { email, otp } = req.body;
+      const user = await this._authService.verifyOtp(res, email, otp);
+
+      if (!user) return;
+
+      ResponseHelper.success(res, 200, "Email verified successfully", { user });
     } catch (error) {
       next(error);
     }

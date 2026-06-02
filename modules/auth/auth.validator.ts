@@ -37,6 +37,36 @@ export class AuthValidator {
       body("password").trim().notEmpty().withMessage("Password is required"),
     ];
   }
+
+  static get verifyOtpRules(): ValidationChain[] {
+    return [
+      body("email")
+        .trim()
+        .notEmpty()
+        .withMessage("Email is required")
+        .isEmail()
+        .withMessage("Please provide a valid email address"),
+      body("otp")
+        .trim()
+        .notEmpty()
+        .withMessage("OTP is required")
+        .isLength({ min: 6, max: 6 })
+        .withMessage("OTP must be exactly 6 digits")
+        .isNumeric()
+        .withMessage("OTP must contain only numbers"),
+    ];
+  }
+
+  static get resendOtpRules(): ValidationChain[] {
+    return [
+      body("email")
+        .trim()
+        .notEmpty()
+        .withMessage("Email is required")
+        .isEmail()
+        .withMessage("Please provide a valid email address"),
+    ];
+  }
 }
 
 export const registerValidator = AuthValidator.registerRules;

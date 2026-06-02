@@ -8,6 +8,8 @@ export interface IAuthService {
   logout(res: Response, userId: string): Promise<boolean>;
   getCurrentUser(userId: string): Promise<IUser | null>;
   searchUsers(query: string, excludeUserId: string): Promise<IUser[]>;
+  sendOtp(email: string): Promise<void>;
+  verifyOtp(res: Response, email: string, otp: string): Promise<IUser | Response>;
 }
 
 export interface RegisterUserDto {
