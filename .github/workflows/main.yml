@@ -21,4 +21,4 @@ jobs:
             git pull origin main
             npm install
             npm run build
-            pm2 restart nexus-server
+            pm2 restart nexus
