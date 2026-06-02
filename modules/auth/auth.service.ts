@@ -95,15 +95,22 @@ export default class AuthService implements IAuthService {
   }
 
   async sendOtp(email: string): Promise<void> {
+    console.log(`[sendOtp] START — email: "${email}"`);
+
     const otp = crypto.randomInt(100000, 999999).toString();
+    console.log(`[sendOtp] Generated OTP: ${otp}`);
 
-    await Otp.deleteMany({ email });
+    const deleteResult = await Otp.deleteMany({ email });
+    console.log(`[sendOtp] Deleted old OTPs: ${deleteResult.deletedCount}`);
 
-    await Otp.create({ email, otp });
+    const created = await Otp.create({ email, otp });
+    console.log(`[sendOtp] Created OTP doc _id: ${created._id}, email: ${created.email}`);
 
-    console.log(`this is the otp ${otp}`);
+    const verify = await Otp.findOne({ email }).sort({ createdAt: -1 });
+    console.log(`[sendOtp] Verify read-back: found=${!!verify}, _id=${verify?._id}`);
 
     await sendOtpEmail(email, otp);
+    console.log(`[sendOtp] DONE — email sent`);
   }
 
   async verifyOtp(
