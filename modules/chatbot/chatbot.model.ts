@@ -26,7 +26,7 @@ const aiMessageSchema = new Schema<IAIMessage>(
       type: String,
       required: true,
       trim: true,
-      maxlength: [200, "Message cannot be longer than 200 characters"],
+      maxlength: [50000, "Message cannot be longer than 50000 characters"],
     },
     createdAt: {
       type: Date,

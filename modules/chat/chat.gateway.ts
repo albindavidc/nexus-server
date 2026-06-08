@@ -3,6 +3,7 @@ import { Server, Socket as IOSocket } from "socket.io";
 import * as http from "http";
 import { Application } from "express";
 import { GroupGateway } from "../group/group.gateway";
+import { ChatBotGateway } from "../chatbot/chatbot.gateway";
 import {
   CustomSocket,
   AuthMiddleware,
@@ -61,6 +62,9 @@ export class ChatGateway {
 
     const groupGateway = container.resolve(GroupGateway);
     groupGateway.registerHandlers(socket, this._io);
+
+    const chatBotGateway = new ChatBotGateway();
+    chatBotGateway.registerHandlers(socket as any, this._io);
 
     socket.on(SOCKET_EVENTS.JOIN_CONVERSATION, (data: { conversationId: string }) => this.handleJoinConversation(socket, data));
     socket.on(SOCKET_EVENTS.LEAVE_CONVERSATION, (data: { conversationId: string }) => this.handleLeaveConversation(socket, data));

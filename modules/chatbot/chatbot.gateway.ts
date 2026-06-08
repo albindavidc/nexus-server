@@ -1,8 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { ChatBotService } from "./chatbot.service";
-import * as http from "http";
-import { AuthMiddleware } from "../../middlewares/auth.middleware";
-import { container, inject } from "tsyringe";
+import { container } from "tsyringe";
 import {
   BOT_USER_ID,
   BOT_USER_NAME,
@@ -14,6 +12,7 @@ import { IBulkChatRequestDto, IChatBotRequestDto } from "../../shared/types/chat
 
 interface AuthSocket extends Socket {
   user: { _id: string; username: string };
+  userId?: string;
 }
 
 interface BotMessagePayload {
@@ -24,51 +23,25 @@ interface BotMessagePayload {
 
 type AckCallback = (response: Record<string, unknown>) => void;
 
+/**
+ * ChatBotGateway registers bot-related socket handlers on the MAIN Socket.IO
+ * server (the one already created in ChatGateway).
+ * It does NOT create its own server — it plugs into the existing one.
+ */
 export class ChatBotGateway {
-  private _io!: Server;
+  private readonly _chatBotService: ChatBotService;
 
-  constructor(
-    @inject(TOKENS.ChatBotService)
-    private readonly _chatBotService: ChatBotService,
-  ) {}
-
-  initialize(httpServer: http.Server, clientUrl: string): void {
-    const io = new Server(httpServer, {
-      cors: {
-        origin: clientUrl,
-        methods: ["GET", "POST"],
-        credentials: true,
-      },
-      pingInterval: 25 * 1000,
-      pingTimeout: 1 * 60 * 1000,
-    });
-
-    this._io = io; // Fix: Assign server instance to class property
-
-    const authMiddleware = container.resolve(AuthMiddleware);
-    this._io.use(authMiddleware.authenticateSocket as Parameters<Server["use"]>[0]);
-
-    this._io.on("connect", (socket: Socket) => {
-      this.handleConnection(socket as AuthSocket);
-    });
+  constructor() {
+    this._chatBotService = container.resolve<ChatBotService>(TOKENS.ChatBotService);
   }
 
-  private handleConnection(socket: AuthSocket): void {
-    const userId = socket.user._id;
-    logger.debug(`User ${userId} connected`);
-
-    socket.join(userId);
-
-    this.registerHandlers(socket);
-
-    socket.on(SOCKET_EVENTS.DISCONNECT, () => {
-      logger.debug(`User ${userId} disconnected`);
-    });
-  }
-
-  registerHandlers(socket: AuthSocket): void {
+  /**
+   * Called from ChatGateway.handleConnection() for every authenticated socket.
+   * Registers all bot-related event listeners on that socket.
+   */
+  registerHandlers(socket: AuthSocket, io: Server): void {
     socket.on(SOCKET_EVENTS.BOT_MESSAGE, (payload: BotMessagePayload) => {
-      this.handleBotMessage(socket, payload);
+      this.handleBotMessage(socket, io, payload);
     });
     socket.on(SOCKET_EVENTS.GET_BOT_HISTORY, (payload: Record<string, unknown>, callback?: AckCallback) => {
       this.handleGetHistory(socket, payload, callback);
@@ -84,9 +57,13 @@ export class ChatBotGateway {
     });
   }
 
+  private getUserId(socket: AuthSocket): string {
+    return socket.user?._id || socket.userId as string;
+  }
+
   private async handleGetHistory(socket: AuthSocket, _payload: Record<string, unknown>, callback?: AckCallback): Promise<void> {
     try {
-      const messages = await this._chatBotService.getHistory(socket.user._id);
+      const messages = await this._chatBotService.getHistory(this.getUserId(socket));
       if (typeof callback === "function") callback({ success: true, data: { messages } });
     } catch (error: unknown) {
       logger.error(`handleGetHistory failed:`, error);
@@ -97,7 +74,7 @@ export class ChatBotGateway {
 
   private async handleClearHistory(socket: AuthSocket, _payload: Record<string, unknown>, callback?: AckCallback): Promise<void> {
     try {
-      await this._chatBotService.clearHistory(socket.user._id);
+      await this._chatBotService.clearHistory(this.getUserId(socket));
       if (typeof callback === "function") callback({ success: true, data: { message: "History cleared." } });
     } catch (error: unknown) {
       logger.error(`handleClearHistory failed:`, error);
@@ -108,7 +85,7 @@ export class ChatBotGateway {
 
   private async handleBulkMessage(socket: AuthSocket, payload: IBulkChatRequestDto, callback?: AckCallback): Promise<void> {
     try {
-      const result = await this._chatBotService.bulkChat(socket.user._id, payload);
+      const result = await this._chatBotService.bulkChat(this.getUserId(socket), payload);
       if (typeof callback === "function") callback({ success: true, data: result });
     } catch (error: unknown) {
       logger.error(`handleBulkMessage failed:`, error);
@@ -119,7 +96,7 @@ export class ChatBotGateway {
 
   private async handleChatDirect(socket: AuthSocket, payload: IChatBotRequestDto, callback?: AckCallback): Promise<void> {
     try {
-      const result = await this._chatBotService.chat(socket.user._id, payload);
+      const result = await this._chatBotService.chat(this.getUserId(socket), payload);
       if (typeof callback === "function") callback({ success: true, data: result });
     } catch (error: unknown) {
       logger.error(`handleChatDirect failed:`, error);
@@ -130,6 +107,7 @@ export class ChatBotGateway {
 
   private async handleBotMessage(
     socket: AuthSocket,
+    io: Server,
     payload: BotMessagePayload,
   ): Promise<void> {
     try {
@@ -143,12 +121,12 @@ export class ChatBotGateway {
         return;
       }
 
-      const userId = socket.user._id;
+      const userId = this.getUserId(socket);
       logger.debug(
         `User ${userId} requesting bot message for conversation ${conversationId}`,
       );
 
-      this.emitTyping(conversationId, true);
+      this.emitTyping(io, conversationId, true);
       let fullReplay = "";
 
       await this._chatBotService.chatStream(
@@ -157,15 +135,15 @@ export class ChatBotGateway {
 
         (chunk: string) => {
           fullReplay += chunk;
-          this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_CHUNK, {
+          io.to(conversationId).emit(SOCKET_EVENTS.BOT_CHUNK, {
             conversationId,
             chunk,
           });
         },
 
         () => {
-          this.emitTyping(conversationId, false);
-          this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_DONE, {
+          this.emitTyping(io, conversationId, false);
+          io.to(conversationId).emit(SOCKET_EVENTS.BOT_DONE, {
             conversationId,
             fullReplay,
           });
@@ -175,8 +153,8 @@ export class ChatBotGateway {
         },
 
         (err: Error) => {
-          this.emitTyping(conversationId, false);
-          this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_ERROR, {
+          this.emitTyping(io, conversationId, false);
+          io.to(conversationId).emit(SOCKET_EVENTS.BOT_ERROR, {
             conversationId,
             message: err.message,
           });
@@ -190,9 +168,9 @@ export class ChatBotGateway {
     }
   }
 
-  private emitTyping(conversationId: string, isTyping: boolean): void {
+  private emitTyping(io: Server, conversationId: string, isTyping: boolean): void {
     if (!conversationId) return;
-    this._io.to(conversationId).emit(SOCKET_EVENTS.BOT_TYPING, {
+    io.to(conversationId).emit(SOCKET_EVENTS.BOT_TYPING, {
       conversationId,
       userId: BOT_USER_ID,
       username: BOT_USER_NAME,
