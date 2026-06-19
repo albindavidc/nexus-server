@@ -1,13 +1,18 @@
 import mongoose, { Document } from "mongoose";
-import { MESSAGE_TYPE } from "../../shared/constants/index";
+import { MESSAGE_TYPE, MessageType } from "../../shared/constants/index";
 
 export interface IMessage extends Document {
   conversation?: mongoose.Types.ObjectId | null;
   groupRef?: mongoose.Types.ObjectId | null;
-  type: string;
+  type: MessageType;
   sender: mongoose.Types.ObjectId;
   content: string;
   mediaURL?: string;
+  mediaMeta?: {
+    mimeType: string;
+    size: number;
+    filename: string;
+  };
   replyTo?: mongoose.Types.ObjectId;
   readBy: { user: mongoose.Types.ObjectId; readAt: Date }[];
   deliveredTo: { user: mongoose.Types.ObjectId; deliveredAt: Date }[];
@@ -48,6 +53,11 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    mediaMeta: {
+      mimeType: String,
+      size: Number,
+      filename: String,
+    },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
@@ -86,7 +96,7 @@ const messageSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 messageSchema.index({ conversation: 1, createdAt: -1 });

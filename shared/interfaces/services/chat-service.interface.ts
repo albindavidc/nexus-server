@@ -42,4 +42,9 @@ export interface SendMessageDto {
   type?: string;
   replyTo?: string;
   mediaUrl?: string;
+  mediaMeta?: {
+    mimeType: string;
+    size: number;
+    filename: string;
+  };
 }

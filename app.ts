@@ -6,9 +6,6 @@ import morgan from "morgan";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 
-
-
-
 export class Application {
   private readonly app: ExpressApp;
 
@@ -30,26 +27,25 @@ export class Application {
     this.app.use(
       cors({
         origin: [
-          'http://localhost:4200',
+          "http://localhost:4200",
           process.env.CLIENT_URL as string,
         ].filter(Boolean),
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-      })
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+      }),
     );
-    this.app.use(helmet({
-      crossOriginResourcePolicy: false,
-      crossOriginOpenerPolicy: false,
-    }));
+    this.app.use(
+      helmet({
+        crossOriginResourcePolicy: false,
+        crossOriginOpenerPolicy: false,
+      }),
+    );
     this.app.use(morgan("dev"));
   }
 
   private applyRoutes(): void {
     this.app.use("/api/v1/auth", authRoutes);
-
-
-
   }
 
   private applyErrorHandling(): void {
