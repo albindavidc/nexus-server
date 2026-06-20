@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { IPushSubscription } from "../../modules/auth/push-subscription.model";
+import { IPushSubscription, PushSubscription } from "../../modules/auth/push-subscription.model";
 import logger from "./logger";
 
 webpush.setVapidDetails(
@@ -29,7 +29,7 @@ export const sendPushNotification = async (
         logger.warn(
           `Push Subscription ${subscription.endpoint} not found or expired, deleting`,
         );
-        await subscription.deleteOne();
+        await PushSubscription.deleteOne({ endpoint: subscription.endpoint });
         return false;
       }
     }
