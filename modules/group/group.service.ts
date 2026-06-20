@@ -15,12 +15,15 @@ import Message, { IMessage } from "../chat/message.model";
 import { CONVERSATION_TYPE, GROUP_ROLES } from "../../shared/constants";
 import { Types } from "mongoose";
 import AppError from "../../shared/errors/AppError";
+import EventEmitter from "events";
 
 @injectable()
 export class GroupService implements IGroupService {
   constructor(
     @inject(TOKENS.GroupRepository)
     private readonly _groupRepository: IGroupRepository,
+    @inject(TOKENS.EventEmitter)
+    private readonly _eventEmitter: EventEmitter,
   ) {}
 
   async createGroup(
@@ -44,9 +47,7 @@ export class GroupService implements IGroupService {
     const members: IGroupMember[] = uniqueIds.map((id) => ({
       user: new Types.ObjectId(id),
       role:
-        id === creatorId.toString()
-          ? GROUP_ROLES.ADMIN
-          : GROUP_ROLES.MEMBER,
+        id === creatorId.toString() ? GROUP_ROLES.ADMIN : GROUP_ROLES.MEMBER,
       joinedAt: new Date(),
       addedBy:
         id === creatorId.toString() ? undefined : new Types.ObjectId(creatorId),
@@ -60,7 +61,7 @@ export class GroupService implements IGroupService {
       theme: dto.theme,
       creator: creatorId,
       members,
-      participants: uniqueIds.map(id => new Types.ObjectId(id)),
+      participants: uniqueIds.map((id) => new Types.ObjectId(id)),
       isActive: true,
     });
   }
@@ -183,7 +184,9 @@ export class GroupService implements IGroupService {
     const group = await this._groupRepository.findById(groupId);
     if (!group) throw new AppError("Group not found", 404);
 
-    const getUserId = (userObj: Types.ObjectId | { _id?: Types.ObjectId }): string => {
+    const getUserId = (
+      userObj: Types.ObjectId | { _id?: Types.ObjectId },
+    ): string => {
       if (!userObj) return "";
       return (userObj as { _id?: Types.ObjectId })._id
         ? (userObj as { _id?: Types.ObjectId })._id!.toString()
@@ -193,7 +196,7 @@ export class GroupService implements IGroupService {
     const reqUserIdStr = requesterId.toString();
 
     const memberIndex = group.members.findIndex(
-      (m) => getUserId(m.user) === reqUserIdStr
+      (m) => getUserId(m.user) === reqUserIdStr,
     );
     if (memberIndex === -1) {
       throw new AppError("You are not a member of this group", 404);
@@ -202,21 +205,23 @@ export class GroupService implements IGroupService {
     const leavingMember = group.members[memberIndex];
 
     const admins = group.members.filter((m) => m.role === GROUP_ROLES.ADMIN);
-    const isLastAdmin = admins.length === 1 && leavingMember.role === GROUP_ROLES.ADMIN;
+    const isLastAdmin =
+      admins.length === 1 && leavingMember.role === GROUP_ROLES.ADMIN;
 
     if (isLastAdmin && group.members.length > 1) {
       const nextMember = group.members.find(
-        (m) => getUserId(m.user) !== reqUserIdStr
+        (m) => getUserId(m.user) !== reqUserIdStr,
       );
       if (nextMember) {
-        const nextMemberId = nextMember.user && (nextMember.user as { _id?: Types.ObjectId })._id 
-          ? (nextMember.user as { _id?: Types.ObjectId })._id!
-          : (nextMember.user as Types.ObjectId);
+        const nextMemberId =
+          nextMember.user && (nextMember.user as { _id?: Types.ObjectId })._id
+            ? (nextMember.user as { _id?: Types.ObjectId })._id!
+            : (nextMember.user as Types.ObjectId);
 
         await this._groupRepository.updateMemberRole(
           groupId,
           nextMemberId,
-          GROUP_ROLES.ADMIN
+          GROUP_ROLES.ADMIN,
         );
       }
     }
@@ -324,10 +329,7 @@ export class GroupService implements IGroupService {
   private async _assertAdminOrOwner(groupId: string, userId: Types.ObjectId) {
     const member = await this._groupRepository.getMember(groupId, userId);
     if (!member || member.role !== GROUP_ROLES.ADMIN)
-      throw new AppError(
-        "Only admins can perform this action",
-        403,
-      );
+      throw new AppError("Only admins can perform this action", 403);
     return member;
   }
 
@@ -335,17 +337,25 @@ export class GroupService implements IGroupService {
     return this._groupRepository.searchGroups(query);
   }
 
-  async joinGroup(groupId: string, requesterId: Types.ObjectId): Promise<IConversationDocument> {
-    const existingCheck = await this._groupRepository.isMember(groupId, requesterId);
+  async joinGroup(
+    groupId: string,
+    requesterId: Types.ObjectId,
+  ): Promise<IConversationDocument> {
+    const existingCheck = await this._groupRepository.isMember(
+      groupId,
+      requesterId,
+    );
     if (existingCheck) {
       throw new AppError("You are already a member of this group", 400);
     }
 
-    const newMembers: IGroupMember[] = [{
-      user: requesterId,
-      role: GROUP_ROLES.MEMBER,
-      joinedAt: new Date(),
-    }];
+    const newMembers: IGroupMember[] = [
+      {
+        user: requesterId,
+        role: GROUP_ROLES.MEMBER,
+        joinedAt: new Date(),
+      },
+    ];
 
     const updatedGroup = await this._groupRepository.addMembers(
       groupId,
@@ -360,7 +370,10 @@ export class GroupService implements IGroupService {
     const group = await this._groupRepository.findById(groupId);
     if (!group) throw new AppError("Group not found", 404);
 
-    const isMember = await this._groupRepository.isMember(groupId, new Types.ObjectId(userId));
+    const isMember = await this._groupRepository.isMember(
+      groupId,
+      new Types.ObjectId(userId),
+    );
     if (!isMember) throw new AppError("Unauthorized", 403);
 
     return Message.find({ groupRef: groupId, isDeleted: false })
@@ -382,7 +395,10 @@ export class GroupService implements IGroupService {
     const group = await this._groupRepository.findById(groupId);
     if (!group) throw new AppError("Group not found", 404);
 
-    const isMember = await this._groupRepository.isMember(groupId, new Types.ObjectId(senderId));
+    const isMember = await this._groupRepository.isMember(
+      groupId,
+      new Types.ObjectId(senderId),
+    );
     if (!isMember) throw new AppError("Unauthorized", 403);
 
     const messageData: Record<string, unknown> = {
@@ -398,10 +414,20 @@ export class GroupService implements IGroupService {
 
     const message = await Message.create(messageData);
 
+    const recipientIds = group.participants
+      .map((p: Types.ObjectId | { _id: Types.ObjectId }) =>
+        p instanceof Types.ObjectId ? p.toString() : p._id.toString()
+      )
+      .filter((id: string) => id !== senderId);
+    this._eventEmitter.emit("message.sent", { message, recipientIds });
+
     await this._groupRepository.updateById(groupId, {
       lastMessage: message._id as Types.ObjectId,
     });
 
-    return message.populate("sender", "username avatar") as unknown as Promise<IMessage>;
+    return message.populate(
+      "sender",
+      "username avatar",
+    ) as unknown as Promise<IMessage>;
   }
 }

@@ -14,7 +14,7 @@ export class PushNotificationService {
     private _pushRepo: IPushSubscriptionRepository,
   ) {}
 
-  async notifyUser(userId: string, payload: IPushNotification): Promise<void> {
+  async sendPushNotification(userId: string, payload: IPushNotification): Promise<void> {
     const subscription = await this._pushRepo.getUserById(userId);
 
     const results = await Promise.allSettled(

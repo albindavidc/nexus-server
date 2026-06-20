@@ -14,12 +14,18 @@ import {
   FindMessagesOptions,
 } from "../../shared/interfaces/repository/chat-repository.interface";
 import { TOKENS } from "../../shared/di/tokens";
-import { CONVERSATION_TYPE, MESSAGE_TYPE, GROUP_ROLES } from "../../shared/constants/index";
+import {
+  CONVERSATION_TYPE,
+  MESSAGE_TYPE,
+  GROUP_ROLES,
+} from "../../shared/constants/index";
+import EventEmitter from "events";
 
 @injectable()
 export default class ChatService implements IChatService {
   constructor(
     @inject(TOKENS.ChatRepository) private _chatRepo: IChatRepository,
+    @inject(TOKENS.EventEmitter) private eventEmitter: EventEmitter,
   ) {}
 
   async getOrCreateDirectConversation(
@@ -130,6 +136,13 @@ export default class ChatService implements IChatService {
       replyTo: replyTo ?? null,
     });
 
+    const recipientIds = conversation.participants
+      .map((p: Types.ObjectId | { _id: Types.ObjectId }) => 
+        p instanceof Types.ObjectId ? p.toString() : p._id.toString()
+      )
+      .filter((id: string) => id !== senderId);
+    this.eventEmitter.emit("message.sent", { message, recipientIds });
+
     await this._chatRepo.updateLastMessage(conversationId, String(message._id));
     return message;
   }
@@ -175,7 +188,10 @@ export default class ChatService implements IChatService {
     return message;
   }
 
-  async clearConversation(conversationId: string, userId: string): Promise<void> {
+  async clearConversation(
+    conversationId: string,
+    userId: string,
+  ): Promise<void> {
     const conversation = await this._chatRepo.findConversationById(
       conversationId,
       userId,
