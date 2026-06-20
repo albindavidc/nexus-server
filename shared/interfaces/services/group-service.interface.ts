@@ -75,5 +75,10 @@ export interface IGroupService {
     groupId: string,
     senderId: string,
     content: string,
+    options?: {
+      type?: string;
+      mediaUrl?: string;
+      mediaMeta?: { mimeType: string; size: number; filename: string };
+    },
   ): Promise<IMessage>;
 }

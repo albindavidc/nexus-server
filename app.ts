@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import authRoutes from "./modules/auth/auth.routes";
+import chatRoutes from "./modules/chat/chat.routes";
 
 export class Application {
   private readonly app: ExpressApp;
@@ -46,6 +47,7 @@ export class Application {
 
   private applyRoutes(): void {
     this.app.use("/api/v1/auth", authRoutes);
+    this.app.use("/api/v1/chat", chatRoutes);
   }
 
   private applyErrorHandling(): void {

@@ -138,13 +138,17 @@ export class GroupGateway {
       }
     });
 
-    socket.on(SOCKET_EVENTS.GROUP_SEND_MESSAGE, async (payload: { groupId: string; content: string }, callback?: AckCallback) => {
+    socket.on(SOCKET_EVENTS.GROUP_SEND_MESSAGE, async (payload: { groupId: string; content: string; type?: string; mediaUrl?: string; mediaMeta?: { mimeType: string; size: number; filename: string } }, callback?: AckCallback) => {
       try {
-        const { groupId, content } = payload;
+        const { groupId, content, type, mediaUrl, mediaMeta } = payload;
         if (!groupId) return emitError("groupId is required.", callback);
         if (!content || !content.trim()) return emitError("Content cannot be empty.", callback);
 
-        const message = await this._groupService.sendGroupMessage(groupId, user._id.toString(), content);
+        const message = await this._groupService.sendGroupMessage(groupId, user._id.toString(), content, {
+          type,
+          mediaUrl,
+          mediaMeta,
+        });
         io.to(groupId).emit(SOCKET_EVENTS.GROUP_NEW_MESSAGE, message);
 
         if (typeof callback === "function") callback({ success: true, data: { message } });

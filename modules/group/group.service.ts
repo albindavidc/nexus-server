@@ -373,6 +373,11 @@ export class GroupService implements IGroupService {
     groupId: string,
     senderId: string,
     content: string,
+    options?: {
+      type?: string;
+      mediaUrl?: string;
+      mediaMeta?: { mimeType: string; size: number; filename: string };
+    },
   ): Promise<IMessage> {
     const group = await this._groupRepository.findById(groupId);
     if (!group) throw new AppError("Group not found", 404);
@@ -380,12 +385,18 @@ export class GroupService implements IGroupService {
     const isMember = await this._groupRepository.isMember(groupId, new Types.ObjectId(senderId));
     if (!isMember) throw new AppError("Unauthorized", 403);
 
-    const message = await Message.create({
+    const messageData: Record<string, unknown> = {
       groupRef: groupId,
       conversation: null,
       sender: new Types.ObjectId(senderId),
       content: content.trim(),
-    });
+    };
+
+    if (options?.type) messageData.type = options.type;
+    if (options?.mediaUrl) messageData.mediaURL = options.mediaUrl;
+    if (options?.mediaMeta) messageData.mediaMeta = options.mediaMeta;
+
+    const message = await Message.create(messageData);
 
     await this._groupRepository.updateById(groupId, {
       lastMessage: message._id as Types.ObjectId,
