@@ -1,8 +1,8 @@
 import { injectable, inject } from "tsyringe";
 import { TOKENS } from "../../shared/di/tokens";
-import { IPushSubscriptionRepository } from "../../shared/interfaces/repository/push-subscription-repository.interface";
+import { IPushNotificationRepository } from "../../shared/interfaces/repository/push-notification-repository.interface";
 import {
-  IPushNotification,
+  IPushNotificationPayload,
   sendPushNotification,
 } from "../../shared/utils/push.util";
 import logger from "../../shared/utils/logger";
@@ -10,11 +10,14 @@ import logger from "../../shared/utils/logger";
 @injectable()
 export class PushNotificationService {
   constructor(
-    @inject(TOKENS.PushSubscriptionRepository)
-    private _pushRepo: IPushSubscriptionRepository,
+    @inject(TOKENS.PushNotificationRepository)
+    private _pushRepo: IPushNotificationRepository,
   ) {}
 
-  async sendPushNotification(userId: string, payload: IPushNotification): Promise<void> {
+  async sendPushNotification(
+    userId: string,
+    payload: IPushNotificationPayload,
+  ): Promise<void> {
     const subscription = await this._pushRepo.getUserById(userId);
 
     const results = await Promise.allSettled(

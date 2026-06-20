@@ -1,7 +1,7 @@
 import { injectable, inject } from "tsyringe";
 import { TOKENS } from "../../shared/di/tokens";
 import { MESSAGE_TYPE } from "../../shared/constants/index";
-import { PushNotificationService } from "../push-subscription/notification.services";
+import { PushNotificationService } from "../push-notification/notification.services";
 import { IMessage } from "./message.model";
 import EventEmitter from "events";
 
@@ -17,7 +17,13 @@ export class ChatEvent {
   handleMessageSent() {
     this._eventEmitter.on(
       "message.sent",
-      async ({ message, recipientIds }: { message: IMessage; recipientIds: string[] }) => {
+      async ({
+        message,
+        recipientIds,
+      }: {
+        message: IMessage;
+        recipientIds: string[];
+      }) => {
         const payload = {
           title: "New Message",
           body:

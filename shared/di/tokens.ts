@@ -14,6 +14,6 @@ export const TOKENS = {
   ChatBotService: Symbol.for("ChatBotService"),
 
   EventEmitter: Symbol.for("EventEmitter"),
-  PushSubscriptionRepository: Symbol.for("PushSubscriptionRepository"),
+  PushNotificationRepository: Symbol.for("PushNotificationRepository"),
   PushNotificationService: Symbol.for("PushNotificationService"),
 } as const;

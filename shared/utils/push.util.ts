@@ -1,8 +1,8 @@
 import webpush from "web-push";
 import {
-  IPushSubscription,
-  PushSubscription,
-} from "../../modules/push-subscription/push-subscription.model";
+  PushNotification,
+  IPushNotification,
+} from "../../modules/push-notification/notification.model";
 import logger from "./logger";
 
 webpush.setVapidDetails(
@@ -11,7 +11,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!,
 );
 
-export interface IPushNotification {
+export interface IPushNotificationPayload {
   title: string;
   body: string;
   icon?: string;
@@ -19,8 +19,8 @@ export interface IPushNotification {
 }
 
 export const sendPushNotification = async (
-  subscription: IPushSubscription,
-  payload: IPushNotification,
+  subscription: IPushNotification,
+  payload: IPushNotificationPayload,
 ) => {
   try {
     await webpush.sendNotification(subscription, JSON.stringify(payload));
@@ -32,7 +32,7 @@ export const sendPushNotification = async (
         logger.warn(
           `Push Subscription ${subscription.endpoint} not found or expired, deleting`,
         );
-        await PushSubscription.deleteOne({ endpoint: subscription.endpoint });
+        await PushNotification.deleteOne({ endpoint: subscription.endpoint });
         return false;
       }
     }

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import "reflect-metadata";
 import path from "path";
 import dotenv from "dotenv";
@@ -9,38 +10,36 @@ if (envResult.error) {
   dotenv.config({ path: fallbackPath });
 }
 
+import http from "http";
 import { registerDependencies } from "./shared/di/container";
-registerDependencies();
-
-import { Application } from "./app";
-import { DatabaseConnection } from "./config/db";
+import { createApp } from "./app";
+import { connectDatabase } from "./config/database.config";
 import { initSocket } from "./modules/chat/chat.gateway";
 import logger from "./shared/utils/logger";
-import http from "http";
 
-class Server {
-  public async bootstrap(): Promise<void> {
-    try {
-      const db = new DatabaseConnection(process.env.MONGO_URI as string);
-      await db.connect();
+const PORT = process.env.PORT || 5000;
 
-      const application = new Application();
-      const expressApp = application.getApp();
+async function bootstrap() {
+  // 1. Register DI first
+  registerDependencies();
 
-      const httpServer = http.createServer(expressApp);
+  // 2. Connect DB
+  await connectDatabase();
 
-      initSocket(httpServer, process.env.CLIENT_URL as string, expressApp);
+  // 3. Create Express App
+  const app = createApp();
+  const httpServer = http.createServer(app);
 
-      const port = process.env.PORT ?? 5000;
-      httpServer.listen(port, () => {
-        logger.info(`\n===============================================\n🌟 Server started on port ${port}\n===============================================`);
-      });
-    } catch (error) {
-      logger.error("Failed to start server:", error);
-      process.exit(1);
-    }
-  }
+  // 4. Initialize WebSockets
+  initSocket(httpServer, process.env.CLIENT_URL as string, app);
+
+  // 5. Start Server
+  httpServer.listen(PORT, () => {
+    logger.info(`\n===============================================\n🌟 Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]\n===============================================`);
+  });
 }
 
-const server = new Server();
-server.bootstrap();
+bootstrap().catch((error) => {
+  logger.error("Failed to start server", error);
+  process.exit(1);
+});

@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface IPushSubscription extends Document {
+export interface IPushNotification extends Document {
   userId: mongoose.Types.ObjectId;
   endpoint: string;
   keys: {
@@ -9,7 +9,7 @@ export interface IPushSubscription extends Document {
   };
 }
 
-const pushSubscriptionSchema = new Schema(
+const pushNotificationSchema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -35,7 +35,7 @@ const pushSubscriptionSchema = new Schema(
   { timestamps: true },
 );
 
-export const PushSubscription = mongoose.model<IPushSubscription>(
-  "PushSubscription",
-  pushSubscriptionSchema,
+export const PushNotification = mongoose.model<IPushNotification>(
+  "PushNotification",
+  pushNotificationSchema,
 );

@@ -1,56 +1,48 @@
-import express, { Application as ExpressApp } from "express";
+import express, { Application } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import { corsConfig } from "./config/cors.config";
+import { registerRoutes } from "./config/routes.config";
 import { errorMiddleware } from "./middlewares/error.middleware";
-import authRoutes from "./modules/auth/auth.routes";
-import chatRoutes from "./modules/chat/chat.routes";
+import { requestIdMiddleware } from "./middlewares/request-id.middleware";
 
-export class Application {
-  private readonly app: ExpressApp;
+export function createApp(): Application {
+  const app = express();
 
-  constructor() {
-    this.app = express();
-    this.applyMiddlewares();
-    this.applyRoutes();
-    this.applyErrorHandling();
-  }
+  // Middlewares
+  app.use(requestIdMiddleware);
+  app.use(express.json({ limit: "10kb" }));
+  app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
+  app.use(cors(corsConfig));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false,
+      crossOriginOpenerPolicy: false,
+    }),
+  );
+  app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-  getApp(): ExpressApp {
-    return this.app;
-  }
+  // Health check
+  app.get("/health", (_, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
-  private applyMiddlewares(): void {
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
-    this.app.use(cookieParser());
-    this.app.use(
-      cors({
-        origin: [
-          "http://localhost:4200",
-          process.env.CLIENT_URL as string,
-        ].filter(Boolean),
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-      }),
-    );
-    this.app.use(
-      helmet({
-        crossOriginResourcePolicy: false,
-        crossOriginOpenerPolicy: false,
-      }),
-    );
-    this.app.use(morgan("dev"));
-  }
+  // Routes
+  registerRoutes(app);
 
-  private applyRoutes(): void {
-    this.app.use("/api/v1/auth", authRoutes);
-    this.app.use("/api/v1/chat", chatRoutes);
-  }
+  // 404
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: `Route ${req.originalUrl} not found`,
+    });
+  });
 
-  private applyErrorHandling(): void {
-    this.app.use(errorMiddleware);
-  }
+  // Error handling
+  app.use(errorMiddleware);
+
+  return app;
 }
