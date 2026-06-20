@@ -8,7 +8,7 @@ import {
 } from "../../shared/interfaces/services/auth-service.interface";
 import { IAuthRepository } from "../../shared/interfaces/repository/auth-repository.interface";
 import { IUser } from "./auth.model";
-import Otp from "./otp.model";
+import { Otp } from "./otp.model";
 import jwt from "jsonwebtoken";
 import { JwtService } from "../../shared/utils/jwt.util";
 import { sendOtpEmail } from "../../shared/utils/email.util";
