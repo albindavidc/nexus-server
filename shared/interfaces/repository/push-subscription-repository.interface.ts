@@ -1,4 +1,4 @@
-import { IPushSubscription } from "../../../modules/auth/push-subscription.model";
+import { IPushSubscription } from "../../../modules/push-subscription/push-subscription.model";
 
 export interface IPushSubscriptionRepository {
   getUserById(userId: string): Promise<IPushSubscription[]>;
@@ -6,5 +6,5 @@ export interface IPushSubscriptionRepository {
     endpoint: string,
     data: Partial<IPushSubscription>,
   ): Promise<IPushSubscription>;
-  removeByEndpoint(endpoint: string): Promise<boolean>;
+  deleteByEndpoint(endpoint: string): Promise<boolean>;
 }

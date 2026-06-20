@@ -1,5 +1,8 @@
 import webpush from "web-push";
-import { IPushSubscription, PushSubscription } from "../../modules/auth/push-subscription.model";
+import {
+  IPushSubscription,
+  PushSubscription,
+} from "../../modules/push-subscription/push-subscription.model";
 import logger from "./logger";
 
 webpush.setVapidDetails(
