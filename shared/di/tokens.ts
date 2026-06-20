@@ -12,4 +12,7 @@ export const TOKENS = {
 
   ChatBotRepository: Symbol.for("ChatBotRepository"),
   ChatBotService: Symbol.for("ChatBotService"),
+
+  PushSubscriptionRepository: Symbol.for("PushSubscriptionRepository"),
+  PushNotificationService: Symbol.for("PushNotificationService"),
 } as const;
