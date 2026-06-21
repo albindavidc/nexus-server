@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.pre<IUser>("save", async function () {
@@ -104,6 +104,8 @@ userSchema.methods.toJson = function () {
   delete obj.refreshToken;
   return obj;
 };
+
+userSchema.index({ username: "text", email: "text" });
 
 const User = mongoose.model<IUser>("User", userSchema);
 export default User;

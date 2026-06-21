@@ -170,4 +170,17 @@ export default class ChatRepository implements IChatRepository {
       { $set: { isDeleted: true, deletedAt: new Date() } },
     );
   }
+
+  async searchMessagesInConversation(
+    conversationId: string,
+    query: string,
+  ): Promise<IMessage[]> {
+    return Message.find({
+      conversationId: conversationId,
+      $text: { $search: query },
+    })
+      .sort({ sort: { $meta: "textScore" } })
+      .populate("sender", "username")
+      .limit(10);
+  }
 }
