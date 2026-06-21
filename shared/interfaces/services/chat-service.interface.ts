@@ -1,5 +1,4 @@
 import { FindMessagesOptions } from "../repository/chat-repository.interface";
-
 import { IConversation } from "../../../modules/chat/conversation.model";
 import { IMessage } from "../../../modules/chat/message.model";
 
@@ -30,6 +29,12 @@ export interface IChatService {
   markAsRead(conversationId: string, userId: string): Promise<void>;
   deleteMessage(messageId: string, userId: string): Promise<IMessage>;
   clearConversation(conversationId: string, userId: string): Promise<void>;
+
+  searchMessagesInConversation(
+    conversationId: string,
+    userId: string,
+    query: string,
+  ): Promise<IMessage[]>;
 }
 
 export interface CreateGroupDto {

@@ -137,8 +137,8 @@ export default class ChatService implements IChatService {
     });
 
     const recipientIds = conversation.participants
-      .map((p: Types.ObjectId | { _id: Types.ObjectId }) => 
-        p instanceof Types.ObjectId ? p.toString() : p._id.toString()
+      .map((p: Types.ObjectId | { _id: Types.ObjectId }) =>
+        p instanceof Types.ObjectId ? p.toString() : p._id.toString(),
       )
       .filter((id: string) => id !== senderId);
     this.eventEmitter.emit("message.sent", { message, recipientIds });
@@ -200,5 +200,20 @@ export default class ChatService implements IChatService {
       throw new AppError("Conversation not found or access denied.", 404);
 
     await this._chatRepo.clearMessages(conversationId);
+  }
+
+  async searchMessagesInConversation(
+    conversationId: string,
+    userId: string,
+    query: string,
+  ): Promise<IMessage[]> {
+    const conversation = await this._chatRepo.findConversationById(
+      conversationId,
+      userId,
+    );
+    if (!conversation)
+      throw new AppError("Conversation not found or access denied.", 404);
+
+    return this._chatRepo.searchMessagesInConversation(conversationId, query);
   }
 }
