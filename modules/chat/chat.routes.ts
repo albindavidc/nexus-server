@@ -15,4 +15,10 @@ router.post(
   chatController.uploadAttachment,
 );
 
+router.get(
+  "/:conversationId/chat/search",
+  authMiddleware.protect,
+  chatController.searchMessagesInConversation,
+);
+
 export default router;
