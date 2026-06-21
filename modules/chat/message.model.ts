@@ -99,6 +99,7 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+messageSchema.index({ content: "text" });
 messageSchema.index({ conversation: 1, createdAt: -1 });
 messageSchema.index({ groupRef: 1, createdAt: -1 });
 
