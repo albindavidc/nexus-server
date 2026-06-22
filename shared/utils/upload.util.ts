@@ -14,7 +14,7 @@ const s3 = new S3Client({
 export const upload = multer({
   storage: multerS3({
     s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME!,
+    bucket: process.env.AWS_BUCKET_NAME || "nexus-bucket-placeholder",
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });
     },
@@ -24,7 +24,7 @@ export const upload = multer({
     },
   }),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 10 * 1024 * 1024, 
   },
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [

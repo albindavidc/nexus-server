@@ -11,6 +11,11 @@ import { GroupRepository } from "../../modules/group/group.repository";
 import { GroupService } from "../../modules/group/group.service";
 import { ChatBotService } from "../../modules/chatbot/chatbot.service";
 import { ChatBotRepository } from "../../modules/chatbot/chatbot.repository";
+import { EventEmitter } from "events";
+import { PushNotificationRepository } from "../../modules/push-notification/notification-repository";
+import { PushNotificationService } from "../../modules/push-notification/notification.services";
+import { NotificationRepository } from "../../modules/notification/notification.repository";
+import { NotificationService } from "../../modules/notification/notification.service";
 
 export function registerDependencies(): void {
   container.registerSingleton<JwtService>(TOKENS.JwtService, JwtService);
@@ -37,5 +42,25 @@ export function registerDependencies(): void {
   container.registerSingleton<ChatBotRepository>(
     TOKENS.ChatBotRepository,
     ChatBotRepository,
+  );
+  
+  container.registerInstance(TOKENS.EventEmitter, new EventEmitter());
+
+  container.registerSingleton<PushNotificationRepository>(
+    TOKENS.PushNotificationRepository,
+    PushNotificationRepository,
+  );
+  container.registerSingleton<PushNotificationService>(
+    TOKENS.PushNotificationService,
+    PushNotificationService,
+  );
+
+  container.registerSingleton<NotificationRepository>(
+    TOKENS.NotificationRepository,
+    NotificationRepository,
+  );
+  container.registerSingleton<NotificationService>(
+    TOKENS.NotificationService,
+    NotificationService,
   );
 }

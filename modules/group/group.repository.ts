@@ -47,7 +47,7 @@ export class GroupRepository implements IGroupRepository {
   ): Promise<IConversationDocument | null> {
     return Group.findOne({
       _id: id,
-      "members.user": userId,
+      "members.user": new Types.ObjectId(userId),
       isDeleted: false,
     })
       .populate(MEMBERS_POPULATE)
@@ -61,7 +61,7 @@ export class GroupRepository implements IGroupRepository {
     userId: string,
   ): Promise<IConversationDocument[]> {
     return Group.find({
-      "members.user": userId,
+      "members.user": new Types.ObjectId(userId),
       isDeleted: false,
     })
       .populate(MEMBERS_POPULATE)

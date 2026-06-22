@@ -14,7 +14,6 @@ import {
 } from "../../shared/interfaces/repository/chat-repository.interface";
 import {
   IChatService,
-  CreateGroupDto,
   SendMessageDto,
 } from "../../shared/interfaces/services/chat-service.interface";
 import { TOKENS } from "../../shared/di/tokens";
@@ -106,11 +105,7 @@ export class ChatGateway {
       (data: Record<string, unknown>, callback?: AckCallback) =>
         this.handleStartDirectConversation(socket, data, callback),
     );
-    socket.on(
-      SOCKET_EVENTS.CREATE_GROUP_CONVERSATION,
-      (data: Record<string, unknown>, callback?: AckCallback) =>
-        this.handleCreateGroupConversation(socket, data, callback),
-    );
+
     socket.on(
       SOCKET_EVENTS.GET_MESSAGES,
       (data: Record<string, unknown>, callback?: AckCallback) =>
@@ -208,14 +203,18 @@ export class ChatGateway {
     try {
       const conversations =
         await this._chatRepo.findConversationsByUser(userId);
+      
+      const uniqueParticipants = new Set<string>();
       conversations.forEach((conversation) => {
-        const otherParticipant = conversation.participants.find(
-          (p) => p.toString() !== userId,
-        );
-        const targetId = otherParticipant?.toString() ?? "";
+        conversation.participants.forEach((p: any) => {
+          const pId = p._id ? p._id.toString() : p.toString();
+          if (pId !== userId) {
+            uniqueParticipants.add(pId);
+          }
+        });
+      });
 
-        if (!targetId) return;
-
+      uniqueParticipants.forEach((targetId) => {
         this._io
           .to(targetId)
           .emit(
@@ -226,7 +225,7 @@ export class ChatGateway {
           );
       });
 
-      logger.debug(`Broadcasted ${status} presence for user ${userId}`);
+      logger.debug(`Broadcasted ${status} presence for user ${userId} to ${uniqueParticipants.size} users`);
     } catch (error) {
       logger.error(`broadcastPresence failed for ${userId}:`, error);
     }
@@ -351,26 +350,7 @@ export class ChatGateway {
     }
   }
 
-  private async handleCreateGroupConversation(
-    socket: CustomSocket,
-    data: Record<string, unknown>,
-    callback?: AckCallback,
-  ): Promise<void> {
-    try {
-      const conversation = await this._chatService.createGroupConversation(
-        socket.userId as string,
-        data as unknown as CreateGroupDto,
-      );
-      if (typeof callback === "function")
-        callback({ success: true, data: { conversation } });
-    } catch (error: unknown) {
-      logger.error(`handleCreateGroupConversation failed:`, error);
-      const msg =
-        error instanceof Error ? error.message : "Failed to create group";
-      if (typeof callback === "function")
-        callback({ success: false, error: msg });
-    }
-  }
+
 
   private async handleGetMessages(
     socket: CustomSocket,

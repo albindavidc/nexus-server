@@ -1,6 +1,7 @@
 import { injectable } from "tsyringe";
 import Conversation, { IConversation } from "./conversation.model";
 import Message, { IMessage } from "./message.model";
+import Group from "../group/group.model";
 import { CONVERSATION_TYPE } from "../../shared/constants/index";
 import {
   IChatRepository,
@@ -29,11 +30,11 @@ export default class ChatRepository implements IChatRepository {
     return Conversation.create(data);
   }
 
-  findConversationById(
+  async findConversationById(
     conversationId: string,
     userId: string,
   ): Promise<IConversation | null> {
-    return Conversation.findOne({
+    let convo = await Conversation.findOne({
       _id: conversationId,
       $or: [
         { type: CONVERSATION_TYPE.GROUP, "members.user": userId },
@@ -51,6 +52,27 @@ export default class ChatRepository implements IChatRepository {
         path: "lastMessage",
         populate: { path: "sender", select: "username avatar" },
       });
+
+    if (convo) return convo;
+
+    // Fallback: check Group model if it was refactored into a separate collection
+    try {
+      convo = (await Group.findOne({
+        _id: conversationId,
+        "members.user": userId,
+        isDeleted: false,
+      })
+        .populate("members.user", "username avatar status lastSeen")
+        .populate("creator", "username avatar status lastSeen")
+        .populate({
+          path: "lastMessage",
+          populate: { path: "sender", select: "username avatar" },
+        })) as any;
+    } catch {
+      // Group model might not exist or failed to load
+    }
+
+    return convo;
   }
 
   findConversationsByUser(userId: string): Promise<IConversation[]> {
@@ -176,10 +198,10 @@ export default class ChatRepository implements IChatRepository {
     query: string,
   ): Promise<IMessage[]> {
     return Message.find({
-      conversationId: conversationId,
-      $text: { $search: query },
+      $or: [{ conversation: conversationId }, { groupRef: conversationId }],
+      content: { $regex: query, $options: "i" },
     })
-      .sort({ sort: { $meta: "textScore" } })
+      .sort({ createdAt: 1 })
       .populate("sender", "username")
       .limit(10);
   }

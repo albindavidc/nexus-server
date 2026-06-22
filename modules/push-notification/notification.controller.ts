@@ -1,9 +1,15 @@
 import { NextFunction, Response } from "express";
+import { injectable, inject } from "tsyringe";
+import { TOKENS } from "../../shared/di/tokens";
 import { IPushNotificationRepository } from "../../shared/interfaces/repository/push-notification-repository.interface";
 import { CustomRequest } from "../../middlewares/auth.middleware";
 
+@injectable()
 export class PushNotificationController {
-  constructor(private notificationRepository: IPushNotificationRepository) {}
+  constructor(
+    @inject(TOKENS.PushNotificationRepository)
+    private notificationRepository: IPushNotificationRepository,
+  ) {}
 
   async subscribeToPushNotification(
     req: CustomRequest,

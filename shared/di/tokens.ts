@@ -16,4 +16,7 @@ export const TOKENS = {
   EventEmitter: Symbol.for("EventEmitter"),
   PushNotificationRepository: Symbol.for("PushNotificationRepository"),
   PushNotificationService: Symbol.for("PushNotificationService"),
+
+  NotificationRepository: Symbol.for("NotificationRepository"),
+  NotificationService: Symbol.for("NotificationService"),
 } as const;

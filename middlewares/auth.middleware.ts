@@ -41,7 +41,14 @@ export class AuthMiddleware {
       let decodedToken: jwt.JwtPayload | string;
       try {
         decodedToken = await this._jwtService.verifyAccessToken(token);
-      } catch {
+      } catch (error: any) {
+        if (error?.name === "TokenExpiredError") {
+          return res.status(401).json({
+            success: false,
+            message: "Token expired",
+            code: "TOKEN_EXPIRED",
+          });
+        }
         return res.status(401).json({
           success: false,
           message: "Invalid Token",

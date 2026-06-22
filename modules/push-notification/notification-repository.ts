@@ -1,6 +1,8 @@
+import { injectable } from "tsyringe";
 import { IPushNotificationRepository } from "../../shared/interfaces/repository/push-notification-repository.interface";
 import { IPushNotification, PushNotification } from "./notification.model";
 
+@injectable()
 export class PushNotificationRepository implements IPushNotificationRepository {
   async getUserById(userId: string): Promise<IPushNotification[]> {
     return await PushNotification.find({ userId });
