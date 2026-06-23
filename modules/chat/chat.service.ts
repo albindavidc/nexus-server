@@ -114,7 +114,7 @@ export default class ChatService implements IChatService {
   async sendMessage(
     senderId: string,
     conversationId: string,
-    { content, type = MESSAGE_TYPE.TEXT, replyTo, mediaUrl }: SendMessageDto,
+    { content, type = MESSAGE_TYPE.TEXT, replyTo, mediaUrl, mediaMeta }: SendMessageDto,
   ): Promise<IMessage> {
     const conversation = await this._chatRepo.findConversationById(
       conversationId,
@@ -133,6 +133,7 @@ export default class ChatService implements IChatService {
       type,
       content: content?.trim(),
       mediaUrl: mediaUrl ?? null,
+      mediaMeta: mediaMeta ?? null,
       replyTo: replyTo ?? null,
     });
 

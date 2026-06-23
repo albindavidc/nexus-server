@@ -416,15 +416,16 @@ export class GroupService implements IGroupService {
     };
 
     if (options?.type) messageData.type = options.type;
-    if (options?.mediaUrl) messageData.mediaURL = options.mediaUrl;
+    if (options?.mediaUrl) messageData.mediaUrl = options.mediaUrl;
     if (options?.mediaMeta) messageData.mediaMeta = options.mediaMeta;
 
     const message = await Message.create(messageData);
 
-    const recipientIds = group.participants
-      .map((p: Types.ObjectId | { _id: Types.ObjectId }) =>
-        p instanceof Types.ObjectId ? p.toString() : p._id.toString()
-      )
+    const recipientIds = group.members
+      .map((m: any) => {
+        const userId = m.user?._id || m.user?.id || m.user;
+        return userId instanceof Types.ObjectId ? userId.toString() : String(userId);
+      })
       .filter((id: string) => id !== senderId);
     this._eventEmitter.emit("message.sent", { message, recipientIds });
 

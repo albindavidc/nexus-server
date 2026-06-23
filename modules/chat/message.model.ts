@@ -7,7 +7,7 @@ export interface IMessage extends Document {
   type: MessageType;
   sender: mongoose.Types.ObjectId;
   content: string;
-  mediaURL?: string;
+  mediaUrl?: string;
   mediaMeta?: {
     mimeType: string;
     size: number;
@@ -49,7 +49,7 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    mediaURL: {
+    mediaUrl: {
       type: String,
       default: null,
     },
