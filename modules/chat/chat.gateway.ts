@@ -206,7 +206,7 @@ export class ChatGateway {
       
       const uniqueParticipants = new Set<string>();
       conversations.forEach((conversation) => {
-        conversation.participants.forEach((p: any) => {
+        conversation.participants.forEach((p: Types.ObjectId | { _id: Types.ObjectId }) => {
           const pId = p._id ? p._id.toString() : p.toString();
           if (pId !== userId) {
             uniqueParticipants.add(pId);

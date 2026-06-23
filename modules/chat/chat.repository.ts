@@ -67,9 +67,9 @@ export default class ChatRepository implements IChatRepository {
         .populate({
           path: "lastMessage",
           populate: { path: "sender", select: "username avatar" },
-        })) as any;
-    } catch {
-      // Group model might not exist or failed to load
+        })) as unknown as typeof convo;
+    } catch (error: unknown) {
+      console.error("Failed to fallback to Group model:", error);
     }
 
     return convo;
