@@ -53,7 +53,7 @@ export class GroupService implements IGroupService {
         id === creatorId.toString() ? undefined : new Types.ObjectId(creatorId),
     }));
 
-    return this._groupRepository.create({
+    const group = await this._groupRepository.create({
       type: CONVERSATION_TYPE.GROUP,
       name: dto.name,
       description: dto.description,
@@ -64,6 +64,13 @@ export class GroupService implements IGroupService {
       participants: uniqueIds.map((id) => new Types.ObjectId(id)),
       isActive: true,
     });
+
+    this._eventEmitter.emit("group.created", {
+      group,
+      participantIds: uniqueIds.filter(id => id !== creatorId.toString())
+    });
+
+    return group;
   }
 
   async getGroup(

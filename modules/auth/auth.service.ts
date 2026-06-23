@@ -13,6 +13,7 @@ import jwt from "jsonwebtoken";
 import { JwtService } from "../../shared/utils/jwt.util";
 import { sendOtpEmail } from "../../shared/utils/email.util";
 import { TOKENS } from "../../shared/di/tokens";
+import { USER_STATUS } from "../../shared/constants/index";
 
 @injectable()
 export default class AuthService implements IAuthService {
@@ -209,7 +210,8 @@ export default class AuthService implements IAuthService {
     await this._authRepo.updateUser(userId, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       refreshToken: null as any,
-      status: "inactive",
+      status: USER_STATUS.OFFLINE,
+      socketIds: [],
     });
 
     this._jwtService.clearCookies(res);

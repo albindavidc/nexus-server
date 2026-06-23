@@ -16,6 +16,8 @@ import { PushNotificationRepository } from "../../modules/push-notification/noti
 import { PushNotificationService } from "../../modules/push-notification/notification.services";
 import { NotificationRepository } from "../../modules/notification/notification.repository";
 import { NotificationService } from "../../modules/notification/notification.service";
+import { ChatEvent } from "../../modules/chat/chat.event";
+import { GroupEvent } from "../../modules/group/group.event";
 
 export function registerDependencies(): void {
   container.registerSingleton<JwtService>(TOKENS.JwtService, JwtService);
@@ -63,4 +65,11 @@ export function registerDependencies(): void {
     TOKENS.NotificationService,
     NotificationService,
   );
+
+  // Instantiate Events to attach listeners
+  const chatEvent = container.resolve(ChatEvent);
+  chatEvent.handleMessageSent();
+
+  const groupEvent = container.resolve(GroupEvent);
+  groupEvent.handleGroupCreated();
 }

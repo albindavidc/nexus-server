@@ -1,3 +1,4 @@
+import EventEmitter from "events";
 import { injectable, inject, container } from "tsyringe";
 import { Server, Socket as IOSocket } from "socket.io";
 import * as http from "http";
@@ -35,6 +36,7 @@ export class ChatGateway {
   constructor(
     @inject(TOKENS.ChatRepository) private _chatRepo: IChatRepository,
     @inject(TOKENS.ChatService) private _chatService: IChatService,
+    @inject(TOKENS.EventEmitter) private _eventEmitter: EventEmitter,
   ) {}
 
   initialize(
@@ -55,6 +57,13 @@ export class ChatGateway {
     if (expressApp) {
       expressApp.set("io", this._io);
     }
+
+    // Listen for new notifications to push via sockets
+    this._eventEmitter.on("notification.created", ({ userId, notification }) => {
+      if (this._io) {
+        this._io.to(userId).emit("new_notification", notification);
+      }
+    });
 
     const authMiddleware = container.resolve(AuthMiddleware);
     this._io.use(
